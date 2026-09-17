@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course.title }} | Coding E-Learning Platform</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<header>
+    <nav>
+        <a href="/"><strong>Coding Academy</strong></a>
+        <a href="{% url 'course_list' %}">Courses</a>
+        <a href="{% url 'course_progress' course.slug %}">Progress</a>
+        {% if request.user.is_staff %}
+            <a href="/admin/">Admin</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main>
+    <section class="course-header">
+        <p><a href="{% url 'course_list' %}">&lt; Back to Courses</a></p>
+        <h1>{{ course.title }}</h1>
+        <p><strong>Instructor:</strong> {{ course.instructor }}</p>
+        <p><strong>Level:</strong> {{ course.level }}</p>
+        <p><strong>Duration:</strong> {{ course.duration }}</p>
+    </section>
+
+    <section class="course-description">
+        <h2>About This Course</h2>
+        {{ course.description|linebreaks }}
+    </section>
+
+    <section class="course-modules">
+        <h2>Course Content</h2>
+
+        {% if modules %}
+            {% for module in modules %}
+                <article class="module-card {% if module.is_locked %}module-locked{% endif %}">
+                    <div class="module-header">
+                        <div>
+                            <h3>
+                                {% if module.is_completed %}
+                                    <span class="completion-icon">✓</span>
+                                {% elif module.is_locked %}
+                                    <span class="completion-icon">Locked</span>
+                                {% else %}
+                                    <span class="completion-icon">Open</span>
+                                {% endif %}
+                                Module {{ module.order }}: {{ module.title }}
+                            </h3>
+
+                            {% if module.description %}
+                                <div class="module-description">
+                                    {{ module.description|linebreaks }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="module-progress">
+                            <strong>{{ module.progress }}%</strong>
+                            <span>
+                                {{ module.completed_lessons }}/{{ module.total_lessons }}
+                                lessons completed
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: {{ module.progress }}%;"></div>
+                    </div>
+
+                    {% if module.is_locked %}
+                        <div class="module-lock-message">
+                            This module is locked. Complete the previous module first.
+                        </div>
+                    {% endif %}
+
+                    <div class="module-lessons">
+                        <h4>Lessons</h4>
+
+                        {% if module.lessons.all %}
+                            <ol class="lesson-list">
+                                {% for lesson in module.lessons.all %}
+                                    <li class="lesson-item">
+                                        {% if module.is_locked %}
+                                            <span class="completion-icon">Locked</span>
+                                            <span class="lesson-locked">{{ lesson.title }}</span>
+                                        {% elif lesson.is_completed %}
+                                            <span class="completion-icon">✓</span>
+                                            <a href="{% url 'lesson_detail' course.slug lesson.id %}" class="lesson-completed">
+                                                {{ lesson.title }}
+                                            </a>
+                                            <span class="completion-status">Completed</span>
+                                        {% else %}
+                                            <span class="completion-icon">Open</span>
+                                            <a href="{% url 'lesson_detail' course.slug lesson.id %}">
+                                                {{ lesson.title }}
+                                            </a>
+                                            <span class="completion-status">Start Lesson</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                        {% else %}
+                            <p>No lessons have been added to this module yet.</p>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <p>No modules have been added to this course yet.</p>
+        {% endif %}
+
+        {% if unassigned_lessons %}
+            <article class="module-card">
+                <h3>Additional Lessons</h3>
+                <ol class="lesson-list">
+                    {% for lesson in unassigned_lessons %}
+                        <li class="lesson-item">
+                            {% if lesson.is_completed %}
+                                <span class="completion-icon">✓</span>
+                            {% else %}
+                                <span class="completion-icon">Open</span>
+                            {% endif %}
+                            <a href="{% url 'lesson_detail' course.slug lesson.id %}">
+                                {{ lesson.title }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </article>
+        {% endif %}
+    </section>
+
+    <section class="course-progress">
+        <h2>Your Progress</h2>
+        <p>Track completed lessons, activities, scores, and feedback.</p>
+        <a href="{% url 'course_progress' course.slug %}">View Course Progress</a>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

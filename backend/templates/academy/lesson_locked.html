@@ -1,0 +1,112 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Lesson Locked | Coding E-Learning Platform</title>
+
+    <link rel="stylesheet"
+          href="{% static 'css/style.css' %}">
+
+</head>
+
+<body>
+
+<header>
+
+    <nav>
+
+        <a href="/">
+            Home
+        </a>
+
+        |
+
+        <a href="{% url 'course_list' %}">
+            Courses
+        </a>
+
+        |
+
+        <a href="/admin/">
+            Admin
+        </a>
+
+    </nav>
+
+</header>
+
+
+<main>
+
+    <section class="locked-lesson">
+
+        <div class="lock-icon">
+            🔒
+        </div>
+
+        <h1>
+            Lesson Locked
+        </h1>
+
+        <h2>
+            {{ lesson.title }}
+        </h2>
+
+        <p>
+            You must complete the previous lesson
+            before accessing this lesson.
+        </p>
+
+        <div class="unlock-requirement">
+
+            <strong>
+                Complete first:
+            </strong>
+
+            <p>
+                {{ previous_lesson.title }}
+            </p>
+
+        </div>
+
+
+        <div class="locked-actions">
+
+            <a
+                href="{% url 'lesson_detail' course.slug previous_lesson.id %}"
+            >
+                Go to Previous Lesson
+            </a>
+
+            <a
+                href="{% url 'course_detail' course.slug %}"
+            >
+                Back to Course
+            </a>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<footer>
+
+    <p>
+        &copy; 2026 Coding E-Learning Platform
+    </p>
+
+</footer>
+
+</body>
+
+</html>

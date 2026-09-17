@@ -1,0 +1,159 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Submissions | Coding E-Learning Platform</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+    <header class="page-header">
+
+        <div class="container">
+
+            <h1>My Submissions</h1>
+
+            <p>
+                View your submitted activities, scores, and feedback.
+            </p>
+
+        </div>
+
+    </header>
+
+
+    <main class="container">
+
+        <div class="page-actions">
+
+            <a href="{% url 'course_list' %}">
+                ← Back to Courses
+            </a>
+
+        </div>
+
+
+        {% if submissions %}
+
+            <div class="submission-list">
+
+                {% for submission in submissions %}
+
+                    <div class="submission-card">
+
+                        <div class="submission-header">
+
+                            <h2>
+                                {{ submission.activity.title }}
+                            </h2>
+
+                            <span class="submission-status">
+                                {{ submission.status|title }}
+                            </span>
+
+                        </div>
+
+
+                        <div class="submission-details">
+
+                            <p>
+                                <strong>Lesson:</strong>
+                                {{ submission.activity.lesson.title }}
+                            </p>
+
+                            <p>
+                                <strong>Course:</strong>
+                                {{ submission.activity.lesson.course.title }}
+                            </p>
+
+                            <p>
+                                <strong>Activity Type:</strong>
+                                {{ submission.activity.get_activity_type_display }}
+                            </p>
+
+                            <p>
+                                <strong>Submitted:</strong>
+                                {{ submission.submitted_at|date:"M d, Y H:i" }}
+                            </p>
+
+                            <p>
+                                <strong>Score:</strong>
+
+                                {% if submission.score is not None %}
+
+                                    {{ submission.score }}
+                                    /
+                                    {{ submission.activity.max_score }}
+
+                                {% else %}
+
+                                    Not graded
+
+                                {% endif %}
+
+                            </p>
+
+                        </div>
+
+
+                        {% if submission.feedback %}
+
+                            <div class="submission-feedback">
+
+                                <h3>Instructor Feedback</h3>
+
+                                <p>
+                                    {{ submission.feedback }}
+                                </p>
+
+                            </div>
+
+                        {% else %}
+
+                            <div class="submission-feedback">
+
+                                <p>
+                                    No feedback yet.
+                                </p>
+
+                            </div>
+
+                        {% endif %}
+
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <h2>No submissions yet</h2>
+
+                <p>
+                    You have not submitted any activities yet.
+                </p>
+
+                <a href="{% url 'course_list' %}">
+                    Browse Courses
+                </a>
+
+            </div>
+
+        {% endif %}
+
+    </main>
+
+</body>
+
+</html>

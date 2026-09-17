@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coding Academy</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<header>
+    <nav class="navbar">
+        <a class="logo" href="/">Coding Academy</a>
+        <a href="/">Home</a>
+        <a href="{% url 'course_list' %}">Courses</a>
+        {% if request.user.is_staff %}
+            <a href="/admin/">Admin</a>
+        {% endif %}
+    </nav>
+</header>
+
+<section class="hero">
+    <div class="hero-content">
+        <h1>Learn Coding. Build Skills. Create the Future.</h1>
+        <p>
+            Master programming, web development, and backend technologies
+            through practical, structured learning.
+        </p>
+        <a href="{% url 'course_list' %}" class="btn">Explore Courses</a>
+    </div>
+</section>
+
+<section id="courses" class="courses">
+    <h2>Our Courses</h2>
+    <p class="section-description">
+        Start learning the technologies you need to build real-world software.
+    </p>
+
+    <div class="course-container">
+        {% for course in courses %}
+            <div class="course-card">
+                <h3>{{ course.title }}</h3>
+                <p>{{ course.description|truncatewords:25 }}</p>
+                <p><strong>Level:</strong> {{ course.level }}</p>
+                <p><strong>Duration:</strong> {{ course.duration }}</p>
+                <a href="{% url 'course_detail' course.slug %}" class="course-btn">
+                    Start Learning
+                </a>
+            </div>
+        {% empty %}
+            <p>No courses are currently available.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section id="about" class="about">
+    <h2>About Coding Academy</h2>
+    <p>
+        A practical learning platform for programming, web development,
+        backend engineering, and software development skills.
+    </p>
+</section>
+
+<footer id="contact">
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

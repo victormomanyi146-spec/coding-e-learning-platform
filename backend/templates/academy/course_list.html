@@ -1,0 +1,120 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Courses - Coding Academy</title>
+
+    <link rel="stylesheet"
+          href="{% static 'css/style.css' %}">
+
+</head>
+
+<body>
+
+    <nav class="navbar">
+
+        <div class="logo">
+            Coding Academy
+        </div>
+
+        <ul class="nav-links">
+
+            <li>
+                <a href="/">Home</a>
+            </li>
+
+            <li>
+                <a href="/courses/">Courses</a>
+            </li>
+
+        </ul>
+
+    </nav>
+
+
+    <section class="courses">
+
+        <h1>Available Courses</h1>
+
+        <p class="section-description">
+            Choose a course and start building your programming skills.
+        </p>
+
+
+        <div class="course-container">
+
+            {% if courses %}
+
+                {% for course in courses %}
+
+                    <div class="course-card">
+
+                        <h2>
+                            {{ course.title }}
+                        </h2>
+
+                        <p>
+                            {{ course.description }}
+                        </p>
+
+                        <p>
+                            <strong>Instructor:</strong>
+                            {{ course.instructor }}
+                        </p>
+
+                        <p>
+                            <strong>Level:</strong>
+                            {{ course.level }}
+                        </p>
+
+                        <p>
+                            <strong>Duration:</strong>
+                            {{ course.duration }}
+                        </p>
+
+                       
+                        <a href="{% url 'course_detail' course.slug %}" 
+
+                         class="btn">
+
+                            Start Learning
+                            
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <p>
+                    No courses are currently available.
+                </p>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <footer>
+
+        <p>
+            &copy; 2026 Coding Academy.
+            All rights reserved.
+        </p>
+
+    </footer>
+
+</body>
+
+</html>

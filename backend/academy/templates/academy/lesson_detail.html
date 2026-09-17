@@ -1,0 +1,148 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ lesson.title }} | Coding E-Learning Platform</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            |
+            <a href="/courses/">Courses</a>
+            |
+            <a href="/admin/">Admin</a>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- Lesson Header -->
+        <section class="lesson-header">
+
+            <p>
+                <a href="{% url 'course_detail' course.slug %}">
+                    ← Back to {{ course.title }}
+                </a>
+            </p>
+
+            <h1>{{ lesson.title }}</h1>
+
+            <p>
+                <strong>Course:</strong>
+                {{ course.title }}
+            </p>
+
+        </section>
+
+
+        <!-- Lesson Content -->
+        <section class="lesson-content">
+
+            <h2>Lesson Content</h2>
+
+            {% if lesson.content %}
+
+                <div>
+                    {{ lesson.content|safe }}
+                </div>
+
+            {% else %}
+
+                <p>
+                    Lesson content will be added soon.
+                </p>
+
+            {% endif %}
+
+        </section>
+
+
+        <!-- Activities -->
+        <section class="lesson-activities">
+
+            <h2>Activities</h2>
+
+            {% with activities=lesson.activities.all %}
+
+                {% if activities %}
+
+                    {% for activity in activities %}
+
+                        <article class="activity-card">
+
+                            <h3>
+                                {{ activity.order }}.
+                                {{ activity.title }}
+                            </h3>
+
+                            <p>
+                                <strong>Type:</strong>
+                                {{ activity.get_activity_type_display }}
+                            </p>
+
+                            <p>
+                                {{ activity.instructions }}
+                            </p>
+
+                            <p>
+                                <strong>Maximum Score:</strong>
+                                {{ activity.max_score }}
+                            </p>
+
+                            {% if activity.is_required %}
+
+                                <p>
+                                    <strong>Required activity</strong>
+                                </p>
+
+                            {% else %}
+
+                                <p>
+                                    Optional activity
+                                </p>
+
+                            {% endif %}
+
+                            <a href="{% url 'activity_detail' course.slug lesson.id activity.id %}">
+                                Open Activity
+                            </a>
+
+                        </article>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <p>
+                        No activities have been added to this lesson yet.
+                    </p>
+
+                {% endif %}
+
+            {% endwith %}
+
+        </section>
+
+
+        <!-- Back to Course -->
+        <section class="lesson-navigation">
+
+            <a href="{% url 'course_detail' course.slug %}">
+                ← Back to Course
+            </a>
+
+        </section>
+
+    </main>
+
+</body>
+</html>

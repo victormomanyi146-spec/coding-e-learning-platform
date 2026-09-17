@@ -1,0 +1,176 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Review Submission | Coding E-Learning Platform</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+</head>
+
+
+<body>
+
+    <header class="page-header">
+
+        <div class="container">
+
+            <h1>Review Submission</h1>
+
+            <p>
+                Review the student's work and provide a score and feedback.
+            </p>
+
+        </div>
+
+    </header>
+
+
+    <main class="container">
+
+        {% if error %}
+            <div class="error-section">
+                <p>{{ error }}</p>
+            </div>
+        {% endif %}
+
+
+        <div class="page-actions">
+
+            <a href="{% url 'instructor_submissions' %}">
+                ← Back to Student Submissions
+            </a>
+
+        </div>
+
+
+        <section class="submission-card">
+
+            <div class="submission-header">
+
+                <h2>
+                    {{ submission.activity.title }}
+                </h2>
+
+                <span class="submission-status">
+                    {{ submission.status|title }}
+                </span>
+
+            </div>
+
+
+            <div class="submission-details">
+
+                <p>
+                    <strong>Student:</strong>
+                    {{ submission.student }}
+                </p>
+
+                <p>
+                    <strong>Course:</strong>
+                    {{ submission.activity.lesson.course.title }}
+                </p>
+
+                <p>
+                    <strong>Lesson:</strong>
+                    {{ submission.activity.lesson.title }}
+                </p>
+
+                <p>
+                    <strong>Activity:</strong>
+                    {{ submission.activity.get_activity_type_display }}
+                </p>
+
+                <p>
+                    <strong>Maximum Score:</strong>
+                    {{ submission.activity.max_score }}
+                </p>
+
+                <p>
+                    <strong>Submitted:</strong>
+                    {{ submission.submitted_at|date:"M d, Y H:i" }}
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <section class="submission-card">
+
+            <h2>Student's Submitted Code</h2>
+
+            <pre><code>{{ submission.code }}</code></pre>
+
+        </section>
+
+
+        <section class="submission-card">
+
+            <h2>Grade Submission</h2>
+
+            <form method="POST">
+
+                {% csrf_token %}
+
+
+                <div>
+
+                    <label for="score">
+                        <strong>Score</strong>
+                    </label>
+
+                    <input
+                        type="number"
+                        id="score"
+                        name="score"
+                        min="0"
+                        max="{{ submission.activity.max_score }}"
+                        value="{{ submission.score|default_if_none:'' }}"
+                        required
+                    >
+
+                    <p>
+                        Maximum score:
+                        {{ submission.activity.max_score }}
+                    </p>
+
+                </div>
+
+
+                <div>
+
+                    <label for="feedback">
+                        <strong>Instructor Feedback</strong>
+                    </label>
+
+                    <textarea
+                        id="feedback"
+                        name="feedback"
+                        rows="8"
+                        placeholder="Enter feedback for the student..."
+                    >{{ submission.feedback }}</textarea>
+
+                </div>
+
+
+                <button type="submit">
+                    Save Grade and Feedback
+                </button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+</body>
+
+</html>

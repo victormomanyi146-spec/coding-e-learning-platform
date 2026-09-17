@@ -1,0 +1,634 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ activity.title }} | Coding E-Learning Platform</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <style>
+
+        .activity-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .breadcrumb {
+            margin-bottom: 25px;
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+        }
+
+        .activity-header {
+            margin-bottom: 30px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 6px;
+            background: #f1f1f1;
+            margin-bottom: 15px;
+        }
+
+        .activity-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .instructions {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+        }
+
+        .editor-section {
+            margin-top: 30px;
+        }
+
+        .editor-box {
+            margin-top: 15px;
+        }
+
+        .code-editor,
+        .program-input {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            padding: 15px;
+            border: 2px solid #999;
+            border-radius: 8px;
+            resize: vertical;
+        }
+
+        .code-editor {
+            min-height: 300px;
+            background: #111827;
+            color: white;
+        }
+
+        .program-input {
+            min-height: 120px;
+            background: #111827;
+            color: white;
+        }
+
+        .input-help {
+            color: #555;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .button-row button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .run-button {
+            background: #2563eb;
+            color: white;
+        }
+
+        .submit-button {
+            background: #16a34a;
+            color: white;
+        }
+
+        .reset-button {
+            background: #6b7280;
+            color: white;
+        }
+
+        .output-section,
+        .error-section,
+        .completion-section {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .output-section {
+            background: #f3f4f6;
+        }
+
+        .error-section {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .output-box,
+        .error-box {
+            white-space: pre-wrap;
+            font-family: Consolas, Monaco, monospace;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 6px;
+        }
+
+        .output-box {
+            background: #111827;
+            color: white;
+        }
+
+        .error-box {
+            background: white;
+            color: #991b1b;
+        }
+
+        .completion-section {
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .navigation a {
+            text-decoration: none;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <nav>
+
+        <a href="/">
+            <strong>Coding E-Learning Platform</strong>
+        </a>
+
+        <a href="/">
+            Home
+        </a>
+
+        <a href="{% url 'course_list' %}">
+            Courses
+        </a>
+
+        <a href="#">
+            About
+        </a>
+
+        <a href="#">
+            Contact
+        </a>
+
+    </nav>
+</header>
+
+
+<main class="activity-container">
+
+
+    <!-- ================================================= -->
+    <!-- NAVIGATION -->
+    <!-- ================================================= -->
+
+    <div class="breadcrumb">
+
+        <a href="{% url 'lesson_detail' course_slug=course.slug lesson_id=lesson.id %}">
+            Back to Lesson
+        </a>
+
+        |
+
+        <a href="{% url 'course_detail' slug=course.slug %}">
+            Back to Course
+        </a>
+        {% if request.user.is_authenticated %}
+            |
+            <a href="{% url 'submission_history' course_slug=course.slug lesson_id=lesson.id activity_id=activity.id %}">
+                Submission History
+            </a>
+        {% endif %}
+
+    </div>
+
+
+    <!-- ================================================= -->
+    <!-- ACTIVITY HEADER -->
+    <!-- ================================================= -->
+
+    <section class="activity-header">
+
+        <p>
+            <strong>
+                {{ activity.get_activity_type_display }}
+            </strong>
+        </p>
+
+        <h1>
+            {{ activity.title }}
+        </h1>
+
+        <div class="status">
+
+            {% if submission %}
+
+                <strong>
+                    Submitted
+                </strong>
+
+            {% else %}
+
+                <strong>
+                    Not Completed
+                </strong>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- ACTIVITY INFORMATION -->
+    <!-- ================================================= -->
+
+    <section class="activity-info">
+
+        <p>
+            <strong>Course:</strong>
+            {{ course.title }}
+        </p>
+
+        <p>
+            <strong>Lesson:</strong>
+            {{ lesson.title }}
+        </p>
+
+        <p>
+            <strong>Maximum Score:</strong>
+            {{ activity.max_score }}
+        </p>
+
+        <p>
+
+            <strong>Required:</strong>
+
+            {% if activity.is_required %}
+                Yes
+            {% else %}
+                No
+            {% endif %}
+
+        </p>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- INSTRUCTIONS -->
+    <!-- ================================================= -->
+
+    <section class="instructions">
+
+        <h2>
+            Instructions
+        </h2>
+
+        <p>
+            Read the instructions carefully before starting this activity.
+        </p>
+
+        <div>
+            {{ activity.instructions|linebreaks }}
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- CODING ACTIVITY -->
+    <!-- ================================================= -->
+
+    {% if activity.activity_type == "coding" %}
+
+    <section class="editor-section">
+
+        <h2>
+            Python Code Editor
+        </h2>
+
+        <p>
+            Write your solution below and test it before submitting.
+        </p>
+
+
+        <form method="post">
+
+            {% csrf_token %}
+
+
+            <!-- CODE EDITOR -->
+
+            <div class="editor-box">
+
+                <label for="code-editor">
+
+                    <strong>
+                        Your Python Code
+                    </strong>
+
+                </label>
+
+                <br>
+
+                <textarea
+                    id="code-editor"
+                    name="code"
+                    class="code-editor"
+                    rows="15"
+                    placeholder="Write your Python code here..."
+                    spellcheck="false"
+                >{{ code }}</textarea>
+
+            </div>
+
+
+            <!-- PROGRAM INPUT -->
+
+            <div class="editor-box">
+
+                <h3>
+                    Program Input
+                </h3>
+
+                <p class="input-help">
+
+                    If your program uses input(), enter the values your
+                    program should receive below.
+
+                    Put each input value on a separate line.
+
+                </p>
+
+                <textarea
+                    id="program-input"
+                    name="program_input"
+                    class="program-input"
+                    rows="6"
+                    placeholder="Victor&#10;25"
+                    spellcheck="false"
+                >{{ program_input }}</textarea>
+
+            </div>
+
+
+            <!-- BUTTONS -->
+
+            <div class="button-row">
+
+                <button
+                    type="submit"
+                    name="run_code"
+                    value="1"
+                    class="run-button"
+                >
+                    Run Code
+                </button>
+
+
+                <button
+                    type="submit"
+                    name="submit_activity"
+                    value="1"
+                    class="submit-button"
+                >
+                    Submit Activity
+                </button>
+
+
+                <button
+                    type="button"
+                    onclick="resetEditor()"
+                    class="reset-button"
+                >
+                    Reset
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+    {% endif %}
+
+
+    <!-- ================================================= -->
+    <!-- PROGRAM OUTPUT -->
+    <!-- ================================================= -->
+
+    {% if output %}
+
+    <section class="output-section">
+
+        <h2>
+            Program Output
+        </h2>
+
+        <div class="output-box">
+            {{ output }}
+        </div>
+
+    </section>
+
+    {% endif %}
+
+
+    <!-- ================================================= -->
+    <!-- PROGRAM ERROR -->
+    <!-- ================================================= -->
+
+    {% if error %}
+
+    <section class="error-section">
+
+        <h2>
+            Program Error
+        </h2>
+
+        <p>
+            Your program produced an error.
+        </p>
+
+        <div class="error-box">
+            {{ error }}
+        </div>
+
+    </section>
+
+    {% endif %}
+
+
+    <!-- ================================================= -->
+    <!-- SUBMISSION -->
+    <!-- ================================================= -->
+
+    {% if submission %}
+
+    <section class="completion-section">
+
+        <h2>
+            Activity Submitted
+        </h2>
+
+        <p>
+            Your activity has been submitted successfully.
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            {{ submission.status }}
+        </p>
+
+        <p>
+            <strong>Submitted:</strong>
+            {{ submission.submitted_at }}
+        </p>
+
+    </section>
+
+    {% endif %}
+
+
+    <!-- ================================================= -->
+    <!-- COMPLETION -->
+    <!-- ================================================= -->
+
+    <section class="completion-section">
+
+        <h2>
+            Complete this activity
+        </h2>
+
+        {% if request.user.is_authenticated %}
+
+            {% if submission %}
+
+                <p>
+                    Your work has been submitted successfully.
+                </p>
+
+            {% else %}
+
+                <p>
+                    Submit your work before marking this activity as complete.
+                </p>
+
+            {% endif %}
+
+        {% else %}
+
+            <p>
+                Please log in to submit and track your progress.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- CONTINUE LEARNING -->
+    <!-- ================================================= -->
+
+    <div class="navigation">
+
+        <a href="{% url 'lesson_detail' course_slug=course.slug lesson_id=lesson.id %}">
+            Return to Lesson
+        </a>
+
+        <a href="{% url 'course_progress' course_slug=course.slug %}">
+            View Course Progress
+        </a>
+
+    </div>
+
+
+</main>
+
+
+<footer>
+
+    <p>
+        &copy; 2026 Coding E-Learning Platform
+    </p>
+
+</footer>
+
+
+<script>
+
+function resetEditor() {
+
+    const codeEditor = document.getElementById("code-editor");
+
+    const programInput = document.getElementById("program-input");
+
+
+    if (codeEditor) {
+
+        codeEditor.value = "";
+
+    }
+
+
+    if (programInput) {
+
+        programInput.value = "";
+
+    }
+
+}
+
+</script>
+
+
+</body>
+
+</html>

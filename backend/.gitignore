@@ -9,12 +9,12 @@ venv/
 
 # Django
 *.sqlite3
-db.sqlite3
 staticfiles/
 
-# Environment variables
+# Environment / secrets
 .env
 .env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -23,12 +23,3 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
-
-# Deployment/local backup
-backend-local-backup/
-
-# Temporary deployment source copy
-New folder/
-
-# Archives
-*.zip

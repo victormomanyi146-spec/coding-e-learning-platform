@@ -1,0 +1,216 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course.title }} Progress | Coding E-Learning Platform</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<header>
+    <nav>
+        <a href="/"><strong>Coding Academy</strong></a>
+        <a href="{% url 'course_list' %}">Courses</a>
+        <a href="{% url 'course_detail' course.slug %}">Course</a>
+        {% if request.user.is_staff %}
+            <a href="/admin/">Admin</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main class="progress-dashboard">
+
+    <section class="progress-header">
+        <p><a href="{% url 'course_detail' course.slug %}">&lt; Back to Course</a></p>
+        <h1>{{ course.title }}</h1>
+        <p class="progress-subtitle">
+            Your learning progress and assessment performance.
+        </p>
+    </section>
+
+    {% if course_completed %}
+        <section class="course-completed-banner">
+            <div class="completion-icon-large">Completed</div>
+            <div>
+                <h2>Course Completed!</h2>
+                <p>You have completed all lessons in this course.</p>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="progress-card">
+        <div class="card-heading">
+            <div>
+                <h2>Overall Course Progress</h2>
+                <p>Progress is based on completed lessons.</p>
+            </div>
+            <div class="progress-percentage">{{ progress_percentage }}%</div>
+        </div>
+
+        <div class="progress-container large-progress">
+            <div class="progress-bar" style="width: {{ progress_percentage }}%;"></div>
+        </div>
+
+        <p class="progress-summary">
+            <strong>{{ completed_lessons }}</strong> / {{ total_lessons }}
+            lessons completed
+        </p>
+    </section>
+
+    <section class="progress-statistics">
+        <div class="stat-card">
+            <div>
+                <span class="stat-label">Lessons</span>
+                <strong class="stat-value">{{ completed_lessons }}/{{ total_lessons }}</strong>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div>
+                <span class="stat-label">Activities</span>
+                <strong class="stat-value">{{ completed_activities }}/{{ total_activities }}</strong>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div>
+                <span class="stat-label">Activity Progress</span>
+                <strong class="stat-value">{{ activity_progress_percentage }}%</strong>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div>
+                <span class="stat-label">Average Score</span>
+                <strong class="stat-value">
+                    {% if average_score is not None %}
+                        {{ average_score }}
+                    {% else %}
+                        Not graded
+                    {% endif %}
+                </strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <h2>Module Progress</h2>
+            <p>Work through each module in sequence.</p>
+        </div>
+
+        <div class="module-progress-list">
+            {% for module in modules %}
+                <article class="dashboard-module-card">
+                    <div class="dashboard-module-header">
+                        <div>
+                            <span class="module-number">Module {{ module.order }}</span>
+                            <h3>{{ module.title }}</h3>
+                        </div>
+                        <strong class="module-percentage">{{ module.progress }}%</strong>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: {{ module.progress }}%;"></div>
+                    </div>
+
+                    <p class="module-progress-text">
+                        {{ module.completed_lessons }}/{{ module.total_lessons }}
+                        lessons completed
+                    </p>
+
+                    <div class="dashboard-module-lessons">
+                        {% for lesson in module.lessons.all %}
+                            <div class="dashboard-lesson-row">
+                                <span class="lesson-progress-icon">
+                                    {% if lesson.is_completed %}✓{% else %}-{% endif %}
+                                </span>
+                                <a href="{% url 'lesson_detail' course.slug lesson.id %}">
+                                    {{ lesson.title }}
+                                </a>
+                                {% if lesson.is_completed %}
+                                    <span class="dashboard-lesson-status">Completed</span>
+                                {% else %}
+                                    <span class="dashboard-lesson-status">In progress</span>
+                                {% endif %}
+                            </div>
+                        {% empty %}
+                            <p>No lessons in this module yet.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% empty %}
+                <p>No modules have been added to this course yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
+            <h2>Recent Assessments</h2>
+            <p>Your latest submissions for this course.</p>
+        </div>
+
+        {% if recent_submissions %}
+            <div class="assessment-list">
+                {% for submission in recent_submissions %}
+                    <article class="assessment-card">
+                        <div class="assessment-main">
+                            <h3>{{ submission.activity.title }}</h3>
+                            <p class="assessment-lesson">
+                                Lesson: {{ submission.activity.lesson.title }}
+                            </p>
+                            <p class="assessment-date">
+                                Submitted {{ submission.submitted_at|date:"M d, Y H:i" }}
+                            </p>
+                        </div>
+
+                        <div class="assessment-result">
+                            <div class="assessment-score">
+                                {% if submission.score is not None %}
+                                    {{ submission.score }}/{{ submission.activity.max_score }}
+                                {% else %}
+                                    Pending
+                                {% endif %}
+                            </div>
+
+                            {% if submission.score is not None %}
+                                <span class="assessment-status graded-status">Graded</span>
+                            {% else %}
+                                <span class="assessment-status pending-status">Pending</span>
+                            {% endif %}
+                        </div>
+
+                        {% if submission.feedback %}
+                            <div class="assessment-feedback">
+                                <strong>Feedback</strong>
+                                <p>{{ submission.feedback }}</p>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-dashboard-message">
+                <h3>No submissions yet</h3>
+                <p>Complete an activity and submit your work to see assessments here.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <div class="dashboard-navigation">
+        <a href="{% url 'course_detail' course.slug %}" class="dashboard-button">
+            Back to Course
+        </a>
+    </div>
+
+</main>
+
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
