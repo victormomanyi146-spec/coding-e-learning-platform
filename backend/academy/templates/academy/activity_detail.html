@@ -265,18 +265,14 @@
 
         <div class="status">
 
-            {% if submission %}
-
-                <strong>
-                    Submitted
-                </strong>
-
+            {% if is_completed %}
+                <strong>Completed</strong>
+            {% elif submission and submission.status == "error" %}
+                <strong>Submission needs correction</strong>
+            {% elif submission %}
+                <strong>Submitted - awaiting assessment</strong>
             {% else %}
-
-                <strong>
-                    Not Completed
-                </strong>
-
+                <strong>Not Completed</strong>
             {% endif %}
 
         </div>
@@ -456,6 +452,38 @@
 
     </section>
 
+    {% else %}
+
+    <section class="editor-section">
+        <h2>Complete Activity</h2>
+        <p>
+            Review the instructions, then mark this activity as complete
+            when you have finished it.
+        </p>
+
+        {% if request.user.is_authenticated %}
+            <form method="post">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    name="submit_activity"
+                    value="1"
+                    class="submit-button"
+                    {% if is_completed %}disabled{% endif %}
+                >
+                    {% if is_completed %}Activity Completed{% else %}Mark as Complete{% endif %}
+                </button>
+            </form>
+        {% else %}
+            <p>
+                <a href="{% url 'login' %}?next={{ request.path }}">
+                    Log in
+                </a>
+                to track your completion.
+            </p>
+        {% endif %}
+    </section>
+
     {% endif %}
 
 
@@ -541,35 +569,34 @@
     <!-- ================================================= -->
 
     <section class="completion-section">
+        <h2>Activity Status</h2>
 
-        <h2>
-            Complete this activity
-        </h2>
-
-        {% if request.user.is_authenticated %}
-
-            {% if submission %}
-
-                <p>
-                    Your work has been submitted successfully.
-                </p>
-
-            {% else %}
-
-                <p>
-                    Submit your work before marking this activity as complete.
-                </p>
-
-            {% endif %}
-
-        {% else %}
-
+        {% if is_completed %}
             <p>
-                Please log in to submit and track your progress.
+                <strong>✓ Completed.</strong>
+                Your progress has been recorded.
             </p>
-
+        {% elif submission and submission.status == "error" %}
+            <p>
+                Your latest submission contains an error. Correct it and
+                submit again to complete the activity.
+            </p>
+        {% elif submission %}
+            <p>
+                Your work has been submitted and is awaiting assessment.
+            </p>
+        {% elif request.user.is_authenticated %}
+            <p>
+                Complete the activity and submit or mark it complete to
+                record your progress.
+            </p>
+        {% else %}
+            <p>
+                Please
+                <a href="{% url 'login' %}?next={{ request.path }}">log in</a>
+                to submit and track your progress.
+            </p>
         {% endif %}
-
     </section>
 
 

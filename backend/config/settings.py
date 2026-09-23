@@ -149,6 +149,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
     csrf_origins = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "")
     CSRF_TRUSTED_ORIGINS = [

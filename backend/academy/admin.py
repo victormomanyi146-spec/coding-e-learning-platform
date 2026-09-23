@@ -4,6 +4,7 @@ from .models import (
     Activity,
     ActivityCompletion,
     Course,
+    Enrollment,
     Lesson,
     Module,
     Submission,
@@ -103,3 +104,28 @@ class ActivityCompletionAdmin(admin.ModelAdmin):
     list_filter = ("activity__lesson__course",)
     ordering = ("-completed_at",)
     readonly_fields = ("completed_at",)
+
+
+@admin.register(Enrollment)
+class EnrollmentAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "student",
+        "course",
+        "enrolled_at",
+    )
+
+    search_fields = (
+        "student__username",
+        "student__email",
+        "course__title",
+    )
+
+    list_filter = (
+        "course",
+        "enrolled_at",
+    )
+
+    ordering = ("-enrolled_at",)
+
+    readonly_fields = ("enrolled_at",)

@@ -2,7 +2,14 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Activity, ActivityCompletion, Course, Lesson, Module, Submission
+from .models import (
+    Activity,
+    ActivityCompletion,
+    Course,
+    Lesson,
+    Module,
+    Submission,
+)
 
 
 User = get_user_model()
@@ -56,6 +63,21 @@ class AcademyFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Fundamentals")
 
+    def test_course_progress_displays_real_values(self):
+        self.client.force_login(self.student)
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        response = self.client.get(
+            reverse("course_progress", args=[self.course.slug])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "100%")
+        self.assertContains(response, "1 / 1 lessons completed")
+
     def test_activity_page_renders_code_and_program_input_fields(self):
         response = self.client.get(
             reverse(
@@ -104,7 +126,7 @@ class AcademyFlowTests(TestCase):
             ).exists()
         )
 
-    def test_submission_history_is_private_to_logged_in_student(self):
+    def test_submission_history_redirects_unauthenticated_users(self):
         url = reverse(
             "submission_history",
             args=[
@@ -114,7 +136,7 @@ class AcademyFlowTests(TestCase):
             ],
         )
 
-        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.get(url).status_code, 302)
 
         self.client.force_login(self.student)
         self.assertEqual(self.client.get(url).status_code, 200)

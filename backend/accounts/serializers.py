@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+
+from .models import User
 from rest_framework import serializers
 
 
@@ -20,7 +22,7 @@ class StudentLoginSerializer(serializers.Serializer):
                 "Invalid username or password."
             )
 
-        if user.role != "STUDENT":
+        if user.role != User.Roles.STUDENT:
             raise serializers.ValidationError(
                 "This login is for students only."
             )

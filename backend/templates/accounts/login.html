@@ -1,20 +1,71 @@
-from django.contrib import admin
-from django.urls import path, include
-from django.http import HttpResponse
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Coding Academy</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
 
+<header>
+    <nav class="navbar">
+        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'course_list' %}">Courses</a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'my_courses' %}">My Courses</a>
+            <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-logout">Logout</button>
+            </form>
+        {% else %}
+            <a href="{% url 'register' %}">Register</a>
+        {% endif %}
+    </nav>
+</header>
 
-def home(request):
-    return HttpResponse("Coding E-Learning Platform")
+<main class="auth-container">
+    <h1>Welcome Back</h1>
+    <p>Sign in to continue your learning journey.</p>
 
+    {% if form.non_field_errors %}
+        <div class="form-error">{{ form.non_field_errors }}</div>
+    {% endif %}
 
-urlpatterns = [
-    path("", home, name="home"),
+    <form method="post">
+        {% csrf_token %}
 
-    path("admin/", admin.site.urls),
+        <div class="form-group">
+            <label for="id_username">Username</label>
+            {{ form.username }}
+            {% for error in form.username.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        </div>
 
-    path("api/accounts/", include("accounts.urls")),
+        <div class="form-group">
+            <label for="id_password">Password</label>
+            {{ form.password }}
+            {% for error in form.password.errors %}
+                <p class="form-error">{{ error }}</p>
+            {% endfor %}
+        </div>
 
-    path("accounts/", include("accounts.urls")),
+        <input type="hidden" name="next" value="{{ next|default:'' }}">
+        <button type="submit">Login</button>
+    </form>
 
-    path("courses/", include("academy.urls")),
-]
+    <p>
+        Don't have an account?
+        <a href="{% url 'register' %}">Create a student account</a>
+    </p>
+</main>
+
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

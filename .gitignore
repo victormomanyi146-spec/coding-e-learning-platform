@@ -32,3 +32,9 @@ New folder/
 
 # Archives
 *.zip
+
+# Local duplicate/backup directories
+Coding E-Learning Platform/
+backend-before-consolidation/
+# Local backup files
+backend/academy/views_backup.py

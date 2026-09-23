@@ -1,78 +1,51 @@
-# Coding E-Learning Platform
+# Coding E-Learning Platform — Backend
 
-A Django-based coding e-learning and assessment platform.
+This directory contains the Django application.
 
-## Learning cycle
+## Applications
 
-**Learn -> Practice -> Submit -> Assess -> Improve -> Progress**
+- `academy`: courses, modules, lessons, activities, submissions, progress, and enrollment
+- `accounts`: custom user model, registration, authentication, and student token login API
+- `config`: Django project configuration
 
-## Current features
-
-- Course catalogue
-- Course -> Module -> Lesson -> Activity structure
-- Student activity completion tracking
-- Python coding editor with program input
-- Submission history
-- Instructor submission review and grading
-- Course progress dashboard
-- Django REST Framework student login/profile API
-- Django admin management
-
-## Project structure
-
-```text
-Coding E-Learning Platform/
-└── backend/
-    ├── academy/
-    ├── accounts/
-    ├── config/
-    ├── static/
-    ├── templates/
-    ├── db.sqlite3
-    ├── manage.py
-    └── requirements.txt
-```
-
-## Setup on Windows PowerShell
+## Local setup
 
 ```powershell
-cd "D:\Resume Projects\Coding E-Learning Platformackend"
+cd "D:\Resume Projects\Coding E-Learning Platform\backend"
 
 python -m venv venv
-.env\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py loaddata academy_content.json
 python manage.py check
 python manage.py test
 python manage.py runserver
 ```
 
-Open:
+## URLs
 
-`http://127.0.0.1:8000/`
+- `/` — Coding Academy home
+- `/courses/` — course catalogue
+- `/courses/my-courses/` — enrolled courses
+- `/accounts/login/` — student login
+- `/accounts/register/` — student registration
+- `/admin/` — Django administration
+- `/api/accounts/login/` — student token login API
 
-Courses:
+## Deployment
 
-`http://127.0.0.1:8000/courses/`
+Render uses:
 
-Admin:
+```text
+Root Directory: backend
+Build Command: ./build.sh
+Start Command: gunicorn config.wsgi:application
+```
 
-`http://127.0.0.1:8000/admin/`
+Production should use PostgreSQL through `DATABASE_URL`.
 
-## Important security note
+## Code execution warning
 
-The coding activity runner executes Python code on the machine running Django. It is suitable for **local development/testing only**.
-
-Before deploying this feature publicly, move code execution into an isolated sandbox/container with strict CPU, memory, filesystem, network, and process limits. Never execute untrusted student code directly on the production web server.
-
-## Environment variables
-
-For deployment, configure:
-
-- `DJANGO_SECRET_KEY`
-- `DJANGO_DEBUG=False`
-- `DJANGO_ALLOWED_HOSTS=your-domain.example`
-- `DJANGO_TIME_ZONE=Africa/Nairobi`
-
-Do not commit production secrets or a production database to source control.
+The Python code runner is intentionally disabled when `DJANGO_DEBUG=False`. Do not enable public code execution until submitted code is isolated in a hardened sandbox.

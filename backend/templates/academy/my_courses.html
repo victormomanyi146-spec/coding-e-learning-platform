@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Courses | Coding Academy</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<header>
+    <nav class="navbar">
+        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'course_list' %}">Courses</a>
+        <a href="{% url 'my_courses' %}">My Courses</a>
+        <span class="nav-user">Welcome, {{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-logout">Logout</button>
+            </form>
+    </nav>
+</header>
+
+<main class="container">
+    <h1>My Courses</h1>
+    <p>Courses you are currently enrolled in.</p>
+
+    {% if enrollments %}
+        <div class="course-container">
+            {% for enrollment in enrollments %}
+                <article class="course-card">
+                    <h2>{{ enrollment.course.title }}</h2>
+                    <p>{{ enrollment.course.description }}</p>
+                    <p><strong>Level:</strong> {{ enrollment.course.level }}</p>
+                    <p><strong>Duration:</strong> {{ enrollment.course.duration }}</p>
+                    <p><strong>Enrolled:</strong> {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
+                    <a href="{% url 'course_detail' enrollment.course.slug %}" class="btn">
+                        Continue Learning
+                    </a>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>No courses yet</h2>
+            <p>You are not enrolled in any courses yet.</p>
+            <a href="{% url 'course_list' %}" class="btn">Browse Courses</a>
+        </div>
+    {% endif %}
+</main>
+
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

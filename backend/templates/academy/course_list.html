@@ -1,120 +1,74 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Courses - Coding Academy</title>
-
-    <link rel="stylesheet"
-          href="{% static 'css/style.css' %}">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses | Coding Academy</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-
 <body>
 
+<header>
     <nav class="navbar">
+        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'course_list' %}">Courses</a>
 
-        <div class="logo">
-            Coding Academy
-        </div>
+        {% if user.is_authenticated %}
+            <a href="{% url 'my_courses' %}">My Courses</a>
+            <span class="nav-user">Welcome, {{ user.username }}</span>
+            <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-logout">Logout</button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'register' %}">Register</a>
+        {% endif %}
 
-        <ul class="nav-links">
-
-            <li>
-                <a href="/">Home</a>
-            </li>
-
-            <li>
-                <a href="/courses/">Courses</a>
-            </li>
-
-        </ul>
-
+        {% if user.is_staff %}
+            <a href="/admin/">Admin</a>
+        {% endif %}
     </nav>
+</header>
 
-
-    <section class="courses">
-
+<main class="container">
+    <section class="section-heading">
         <h1>Available Courses</h1>
-
         <p class="section-description">
-            Choose a course and start building your programming skills.
+            Choose a course and build practical programming skills.
         </p>
-
-
-        <div class="course-container">
-
-            {% if courses %}
-
-                {% for course in courses %}
-
-                    <div class="course-card">
-
-                        <h2>
-                            {{ course.title }}
-                        </h2>
-
-                        <p>
-                            {{ course.description }}
-                        </p>
-
-                        <p>
-                            <strong>Instructor:</strong>
-                            {{ course.instructor }}
-                        </p>
-
-                        <p>
-                            <strong>Level:</strong>
-                            {{ course.level }}
-                        </p>
-
-                        <p>
-                            <strong>Duration:</strong>
-                            {{ course.duration }}
-                        </p>
-
-                       
-                        <a href="{% url 'course_detail' course.slug %}" 
-
-                         class="btn">
-
-                            Start Learning
-                            
-                        </a>
-
-                    </div>
-
-                {% endfor %}
-
-            {% else %}
-
-                <p>
-                    No courses are currently available.
-                </p>
-
-            {% endif %}
-
-        </div>
-
     </section>
 
+    <div class="course-container">
+        {% for course in courses %}
+            <article class="course-card">
+                <h2>{{ course.title }}</h2>
+                <p>{{ course.description }}</p>
+                <p><strong>Instructor:</strong> {{ course.instructor }}</p>
+                <p><strong>Level:</strong> {{ course.level }}</p>
+                <p><strong>Duration:</strong> {{ course.duration }}</p>
 
-    <footer>
+                <a
+                    href="{% url 'course_detail' course.slug %}"
+                    class="btn"
+                >
+                    View Course
+                </a>
+            </article>
+        {% empty %}
+            <div class="empty-state">
+                <h2>No courses are currently available.</h2>
+                <p>Please check back later.</p>
+            </div>
+        {% endfor %}
+    </div>
+</main>
 
-        <p>
-            &copy; 2026 Coding Academy.
-            All rights reserved.
-        </p>
-
-    </footer>
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
 
 </body>
-
 </html>

@@ -1,0 +1,226 @@
+[
+  {
+    "model": "academy.course",
+    "pk": 1,
+    "fields": {
+      "title": "Python Programming",
+      "slug": "python-programming",
+      "description": "Learn Python programming from the fundamentals, including variables, data types, conditions, loops, functions, data structures, file handling, and modules.",
+      "instructor": "Coding E-Learning Platform",
+      "duration": "8 weeks",
+      "level": "Beginner",
+      "created_at": "2026-09-11T10:33:37.956Z"
+    }
+  },
+  {
+    "model": "academy.course",
+    "pk": 2,
+    "fields": {
+      "title": "Django Web Development",
+      "slug": "django-web-development",
+      "description": "Learn how to build dynamic web applications using Django, including models, views, templates, URLs, forms, authentication, and database integration.",
+      "instructor": "Coding E-Learning Platform",
+      "duration": "8 weeks",
+      "level": "Intermediate",
+      "created_at": "2026-09-11T10:35:09.458Z"
+    }
+  },
+  {
+    "model": "academy.course",
+    "pk": 3,
+    "fields": {
+      "title": "Django REST Framework",
+      "slug": "django-rest-framework",
+      "description": "Learn how to build RESTful APIs using Django REST Framework, including serializers, API views, authentication, permissions, and API development.",
+      "instructor": "Coding E-Learning Platform",
+      "duration": "6 weeks",
+      "level": "Intermediate",
+      "created_at": "2026-09-11T10:36:24.000Z"
+    }
+  },
+  {
+    "model": "academy.module",
+    "pk": 1,
+    "fields": {
+      "course": 1,
+      "title": "Python Fundamentals",
+      "description": "Learn the fundamental concepts of Python programming, including syntax, variables, data types, input and output, and basic programming concepts.",
+      "order": 1,
+      "created_at": "2026-09-15T11:13:19.258Z"
+    }
+  },
+  {
+    "model": "academy.lesson",
+    "pk": 1,
+    "fields": {
+      "course": 1,
+      "module": 1,
+      "title": "Introduction to Python",
+      "content": "Python is a high-level, interpreted programming language known for its simple syntax and readability.\r\n\r\nIn this lesson, we introduce Python, its uses, installation, and the basic structure of a Python program.",
+      "order": 1,
+      "created_at": "2026-09-11T11:33:06.797Z"
+    }
+  },
+  {
+    "model": "academy.lesson",
+    "pk": 2,
+    "fields": {
+      "course": 1,
+      "module": 1,
+      "title": "Variables and Data Types",
+      "content": "Variables are used to store data in Python. Python supports several basic data types including integers, floating-point numbers, strings, and Boolean values.\r\n\r\nIn this lesson, we learn how to create variables and work with different data types.",
+      "order": 2,
+      "created_at": "2026-09-11T11:34:15.647Z"
+    }
+  },
+  {
+    "model": "academy.lesson",
+    "pk": 3,
+    "fields": {
+      "course": 1,
+      "module": 1,
+      "title": "Input and Output",
+      "content": "Python provides the input() function for receiving information from the user and the print() function for displaying information.\r\n\r\nThis lesson introduces basic input and output operations.",
+      "order": 3,
+      "created_at": "2026-09-11T11:35:28.165Z"
+    }
+  },
+  {
+    "model": "academy.lesson",
+    "pk": 4,
+    "fields": {
+      "course": 1,
+      "module": 1,
+      "title": "Conditional Statements",
+      "content": "Conditional statements allow a Python program to make decisions.\r\n\r\nWe will learn how to use if, elif, and else to execute different blocks of code depending on conditions.",
+      "order": 4,
+      "created_at": "2026-09-11T11:36:25.880Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 1,
+    "fields": {
+      "lesson": 1,
+      "title": "Python Introduction Exercise",
+      "activity_type": "coding",
+      "instructions": "Write a simple Python program that displays the following message:\r\n\r\nWelcome to Python Programming!\r\n\r\nRun your program and make sure the message is displayed correctly.",
+      "order": 1,
+      "max_score": 20,
+      "is_required": true,
+      "created_at": "2026-09-12T20:31:01.513Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 2,
+    "fields": {
+      "lesson": 1,
+      "title": "Python Basics Reading",
+      "activity_type": "reading",
+      "instructions": "Read the lesson carefully and identify three important concepts you have learned about Python.",
+      "order": 2,
+      "max_score": 10,
+      "is_required": true,
+      "created_at": "2026-09-13T05:36:56.478Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 3,
+    "fields": {
+      "lesson": 2,
+      "title": "Variables Practice",
+      "activity_type": "coding",
+      "instructions": "Create a Python program that stores your name, age, and height in variables. Use appropriate data types for each value, then print all three values.",
+      "order": 1,
+      "max_score": 20,
+      "is_required": true,
+      "created_at": "2026-09-15T18:36:53.488Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 4,
+    "fields": {
+      "lesson": 2,
+      "title": "Data Types Exercise",
+      "activity_type": "coding",
+      "instructions": "Create four Python variables demonstrating the following data types: integer, float, string, and Boolean. Print each variable and its value.",
+      "order": 2,
+      "max_score": 20,
+      "is_required": true,
+      "created_at": "2026-09-15T18:38:21.202Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 5,
+    "fields": {
+      "lesson": 2,
+      "title": "Variables and Data Types Reading",
+      "activity_type": "reading",
+      "instructions": "Read the lesson carefully. Identify the four basic Python data types discussed in this lesson and explain briefly what each type is used for.",
+      "order": 3,
+      "max_score": 10,
+      "is_required": true,
+      "created_at": "2026-09-15T18:39:34.840Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 6,
+    "fields": {
+      "lesson": 3,
+      "title": "Using print()",
+      "activity_type": "coding",
+      "instructions": "Write a Python program that uses print() to display the following three lines:\r\n\r\nWelcome to Python Programming!\r\nI am learning Python.\r\nPython is fun!\r\n\r\nRun your program and verify that all three lines are displayed correctly.",
+      "order": 1,
+      "max_score": 20,
+      "is_required": true,
+      "created_at": "2026-09-15T18:44:19.227Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 7,
+    "fields": {
+      "lesson": 3,
+      "title": "Getting User Input",
+      "activity_type": "coding",
+      "instructions": "Write a Python program that asks the user to enter their name and age.\r\n\r\nStore the name in a variable called name and the age in a variable called age.\r\n\r\nDisplay the information using print().\r\n\r\nExample interaction:\r\n\r\nEnter your name: Victor\r\nEnter your age: 25\r\n\r\nYour name is Victor\r\nYour age is 25\r\n\r\nRemember to convert the age to an integer using int().",
+      "order": 2,
+      "max_score": 20,
+      "is_required": true,
+      "created_at": "2026-09-15T18:45:52.672Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 8,
+    "fields": {
+      "lesson": 3,
+      "title": "Input and Output Challenge",
+      "activity_type": "coding",
+      "instructions": "Create a Python program that asks the user for:\r\n\r\n1. Their name\r\n2. Their age\r\n3. Their height in metres\r\n\r\nConvert the age to an integer and the height to a floating-point number.\r\n\r\nThen display all the information.\r\n\r\nYour program should demonstrate the use of:\r\n\r\ninput()\r\nint()\r\nfloat()\r\nprint()\r\n\r\nTest your program with different values.",
+      "order": 3,
+      "max_score": 30,
+      "is_required": true,
+      "created_at": "2026-09-15T18:48:02.725Z"
+    }
+  },
+  {
+    "model": "academy.activity",
+    "pk": 9,
+    "fields": {
+      "lesson": 3,
+      "title": "Input and Output Review",
+      "activity_type": "reading",
+      "instructions": "Review the lesson and explain the purpose of:\r\n\r\n1. print()\r\n2. input()\r\n3. int()\r\n4. float()\r\n\r\nAlso explain why input() values sometimes need to be converted before performing mathematical operations.",
+      "order": 4,
+      "max_score": 10,
+      "is_required": true,
+      "created_at": "2026-09-15T18:50:23.141Z"
+    }
+  }
+]

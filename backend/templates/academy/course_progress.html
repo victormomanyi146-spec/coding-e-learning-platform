@@ -4,17 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ course.title }} Progress | Coding E-Learning Platform</title>
+    <title>{{ course.title }} Progress | Coding Academy</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
 
 <header>
-    <nav>
-        <a href="/"><strong>Coding Academy</strong></a>
+    <nav class="navbar">
+        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
         <a href="{% url 'course_list' %}">Courses</a>
         <a href="{% url 'course_detail' course.slug %}">Course</a>
-        {% if request.user.is_staff %}
+        {% if user.is_authenticated %}
+            <a href="{% url 'my_courses' %}">My Courses</a>
+            <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-logout">Logout</button>
+            </form>
+        {% endif %}
+        {% if user.is_staff %}
             <a href="/admin/">Admin</a>
         {% endif %}
     </nav>
@@ -23,16 +30,16 @@
 <main class="progress-dashboard">
 
     <section class="progress-header">
-        <p><a href="{% url 'course_detail' course.slug %}">&lt; Back to Course</a></p>
+        <p><a href="{% url 'course_detail' course.slug %}">&larr; Back to Course</a></p>
         <h1>{{ course.title }}</h1>
         <p class="progress-subtitle">
-            Your learning progress and assessment performance.
+            Track your lessons, activities, submissions, and assessment results.
         </p>
     </section>
 
     {% if course_completed %}
         <section class="course-completed-banner">
-            <div class="completion-icon-large">Completed</div>
+            <div class="completion-icon-large">✓</div>
             <div>
                 <h2>Course Completed!</h2>
                 <p>You have completed all lessons in this course.</p>
@@ -46,16 +53,21 @@
                 <h2>Overall Course Progress</h2>
                 <p>Progress is based on completed lessons.</p>
             </div>
-            <div class="progress-percentage">{{ progress_percentage }}%</div>
+            <div class="progress-percentage">
+                {{ progress.lesson_percentage }}%
+            </div>
         </div>
 
-        <div class="progress-container large-progress">
-            <div class="progress-bar" style="width: {{ progress_percentage }}%;"></div>
+        <div class="progress-container large-progress" aria-label="Course progress">
+            <div
+                class="progress-bar"
+                style="width: {{ progress.lesson_percentage }}%;"
+            ></div>
         </div>
 
         <p class="progress-summary">
-            <strong>{{ completed_lessons }}</strong> / {{ total_lessons }}
-            lessons completed
+            <strong>{{ progress.lessons_completed }}</strong>
+            / {{ progress.lessons_total }} lessons completed
         </p>
     </section>
 
@@ -63,21 +75,27 @@
         <div class="stat-card">
             <div>
                 <span class="stat-label">Lessons</span>
-                <strong class="stat-value">{{ completed_lessons }}/{{ total_lessons }}</strong>
+                <strong class="stat-value">
+                    {{ progress.lessons_completed }}/{{ progress.lessons_total }}
+                </strong>
             </div>
         </div>
 
         <div class="stat-card">
             <div>
                 <span class="stat-label">Activities</span>
-                <strong class="stat-value">{{ completed_activities }}/{{ total_activities }}</strong>
+                <strong class="stat-value">
+                    {{ progress.activities_completed }}/{{ progress.activities_total }}
+                </strong>
             </div>
         </div>
 
         <div class="stat-card">
             <div>
                 <span class="stat-label">Activity Progress</span>
-                <strong class="stat-value">{{ activity_progress_percentage }}%</strong>
+                <strong class="stat-value">
+                    {{ progress.activity_percentage }}%
+                </strong>
             </div>
         </div>
 
@@ -85,8 +103,8 @@
             <div>
                 <span class="stat-label">Average Score</span>
                 <strong class="stat-value">
-                    {% if average_score is not None %}
-                        {{ average_score }}
+                    {% if progress.average_score is not None %}
+                        {{ progress.average_score }}%
                     {% else %}
                         Not graded
                     {% endif %}
@@ -106,14 +124,21 @@
                 <article class="dashboard-module-card">
                     <div class="dashboard-module-header">
                         <div>
-                            <span class="module-number">Module {{ module.order }}</span>
+                            <span class="module-number">
+                                Module {{ module.order }}
+                            </span>
                             <h3>{{ module.title }}</h3>
                         </div>
-                        <strong class="module-percentage">{{ module.progress }}%</strong>
+                        <strong class="module-percentage">
+                            {{ module.progress }}%
+                        </strong>
                     </div>
 
                     <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ module.progress }}%;"></div>
+                        <div
+                            class="progress-bar"
+                            style="width: {{ module.progress }}%;"
+                        ></div>
                     </div>
 
                     <p class="module-progress-text">
@@ -125,15 +150,21 @@
                         {% for lesson in module.lessons.all %}
                             <div class="dashboard-lesson-row">
                                 <span class="lesson-progress-icon">
-                                    {% if lesson.is_completed %}✓{% else %}-{% endif %}
+                                    {% if lesson.is_completed %}✓{% else %}○{% endif %}
                                 </span>
+
                                 <a href="{% url 'lesson_detail' course.slug lesson.id %}">
                                     {{ lesson.title }}
                                 </a>
+
                                 {% if lesson.is_completed %}
-                                    <span class="dashboard-lesson-status">Completed</span>
+                                    <span class="dashboard-lesson-status">
+                                        Completed
+                                    </span>
                                 {% else %}
-                                    <span class="dashboard-lesson-status">In progress</span>
+                                    <span class="dashboard-lesson-status">
+                                        Not completed
+                                    </span>
                                 {% endif %}
                             </div>
                         {% empty %}
@@ -142,7 +173,12 @@
                     </div>
                 </article>
             {% empty %}
-                <p>No modules have been added to this course yet.</p>
+                <div class="empty-dashboard-message">
+                    <h3>No modules yet</h3>
+                    <p>
+                        Course modules will appear here when they are added.
+                    </p>
+                </div>
             {% endfor %}
         </div>
     </section>
@@ -177,15 +213,23 @@
                             </div>
 
                             {% if submission.score is not None %}
-                                <span class="assessment-status graded-status">Graded</span>
+                                <span class="assessment-status graded-status">
+                                    Graded
+                                </span>
+                            {% elif submission.status == "error" %}
+                                <span class="assessment-status error-status">
+                                    Needs correction
+                                </span>
                             {% else %}
-                                <span class="assessment-status pending-status">Pending</span>
+                                <span class="assessment-status pending-status">
+                                    Pending
+                                </span>
                             {% endif %}
                         </div>
 
                         {% if submission.feedback %}
                             <div class="assessment-feedback">
-                                <strong>Feedback</strong>
+                                <strong>Instructor Feedback</strong>
                                 <p>{{ submission.feedback }}</p>
                             </div>
                         {% endif %}
@@ -194,8 +238,12 @@
             </div>
         {% else %}
             <div class="empty-dashboard-message">
+                <div class="empty-icon">📝</div>
                 <h3>No submissions yet</h3>
-                <p>Complete an activity and submit your work to see assessments here.</p>
+                <p>
+                    Complete an activity and submit your work to see
+                    assessments here.
+                </p>
             </div>
         {% endif %}
     </section>
@@ -203,6 +251,9 @@
     <div class="dashboard-navigation">
         <a href="{% url 'course_detail' course.slug %}" class="dashboard-button">
             Back to Course
+        </a>
+        <a href="{% url 'course_list' %}" class="dashboard-secondary-button">
+            Browse Courses
         </a>
     </div>
 

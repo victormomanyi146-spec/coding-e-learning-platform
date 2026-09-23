@@ -4,7 +4,39 @@ from . import views
 
 
 urlpatterns = [
-    path("", views.course_list, name="course_list"),
+    # ========================================================
+    # COURSE LIST
+    # ========================================================
+
+    path(
+        "",
+        views.course_list,
+        name="course_list",
+    ),
+
+    # ========================================================
+    # MY COURSES
+    # ========================================================
+
+    path(
+        "my-courses/",
+        views.my_courses,
+        name="my_courses",
+    ),
+
+    # ========================================================
+    # ENROLL IN COURSE
+    # ========================================================
+
+    path(
+        "<slug:slug>/enroll/",
+        views.enroll_course,
+        name="enroll_course",
+    ),
+
+    # ========================================================
+    # INSTRUCTOR SUBMISSIONS
+    # ========================================================
 
     path(
         "instructor/submissions/",
@@ -18,11 +50,19 @@ urlpatterns = [
         name="review_submission",
     ),
 
+    # ========================================================
+    # SUBMISSION HISTORY
+    # ========================================================
+
     path(
         "<slug:course_slug>/lessons/<int:lesson_id>/activities/<int:activity_id>/submissions/",
         views.submission_history,
         name="submission_history",
     ),
+
+    # ========================================================
+    # ACTIVITY DETAIL
+    # ========================================================
 
     path(
         "<slug:course_slug>/lessons/<int:lesson_id>/activities/<int:activity_id>/",
@@ -30,17 +70,29 @@ urlpatterns = [
         name="activity_detail",
     ),
 
+    # ========================================================
+    # LESSON DETAIL
+    # ========================================================
+
     path(
         "<slug:course_slug>/lessons/<int:lesson_id>/",
         views.lesson_detail,
         name="lesson_detail",
     ),
 
+    # ========================================================
+    # COURSE PROGRESS
+    # ========================================================
+
     path(
         "<slug:course_slug>/progress/",
         views.course_progress,
         name="course_progress",
     ),
+
+    # ========================================================
+    # COURSE DETAIL
+    # ========================================================
 
     path(
         "<slug:slug>/",

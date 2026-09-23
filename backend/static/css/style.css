@@ -1251,3 +1251,175 @@ input[type="number"] {
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================================
+AUTHENTICATION FORMS
+========================================= */
+
+.auth-container {
+width: min(500px, calc(100% - 40px));
+margin: 50px auto;
+padding: 30px;
+background: #ffffff;
+border-radius: 10px;
+box-sizing: border-box;
+}
+
+.auth-container h1 {
+margin-bottom: 10px;
+}
+
+.auth-container form {
+margin-top: 25px;
+}
+
+.auth-container .form-group {
+margin-bottom: 20px;
+}
+
+.auth-container label {
+display: block;
+margin-bottom: 8px;
+font-weight: 600;
+}
+
+.auth-container input {
+display: block;
+width: 100%;
+min-height: 44px;
+padding: 10px 12px;
+border: 1px solid #d1d5db;
+border-radius: 6px;
+background: #ffffff;
+color: #111827;
+font-size: 16px;
+box-sizing: border-box;
+}
+
+.auth-container input:focus {
+outline: none;
+border-color: #2563eb;
+}
+
+.auth-container button {
+display: block;
+width: 100%;
+padding: 12px 18px;
+margin-top: 10px;
+border: none;
+border-radius: 6px;
+background: #2563eb;
+color: #ffffff;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+}
+
+.auth-container button:hover {
+opacity: 0.9;
+}
+
+.form-error {
+margin-top: 6px;
+color: #dc2626;
+font-size: 14px;
+}
+
+/* =========================================
+   FINE-TUNING / SHARED UI
+========================================= */
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.navbar .logo {
+    margin-right: auto;
+}
+
+.nav-user {
+    color: #d1d5db;
+    font-weight: 600;
+}
+
+.btn,
+.course-btn,
+.enrollment-button,
+.submit-button {
+    display: inline-block;
+    border: 0;
+    border-radius: 7px;
+    padding: 10px 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.empty-state {
+    padding: 35px;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.form-help {
+    margin-top: 6px;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.error-status {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+    .navbar {
+        justify-content: flex-start;
+    }
+
+    .navbar .logo {
+        width: 100%;
+        margin-right: 0;
+    }
+
+    .nav-user {
+        width: 100%;
+    }
+}
+
+.nav-logout-form {
+    display: inline;
+    margin: 0;
+}
+
+.nav-logout {
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.nav-logout:hover {
+    color: #93c5fd;
+}
