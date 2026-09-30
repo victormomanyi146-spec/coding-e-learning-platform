@@ -38,3 +38,6 @@ Coding E-Learning Platform/
 backend-before-consolidation/
 # Local backup files
 backend/academy/views_backup.py
+media/
+*.bak
+*.backup

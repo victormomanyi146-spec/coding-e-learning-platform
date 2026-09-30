@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,22 +9,8 @@
 </head>
 <body>
 
-<header>
-    <nav class="navbar">
-        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
-        <a href="{% url 'course_list' %}">Courses</a>
-        <a href="{% url 'course_detail' course.slug %}">Course</a>
-        {% if user.is_authenticated %}
-            <a href="{% url 'my_courses' %}">My Courses</a>
-            <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
-                {% csrf_token %}
-                <button type="submit" class="nav-logout">Logout</button>
-            </form>
-        {% endif %}
-        {% if user.is_staff %}
-            <a href="/admin/">Admin</a>
-        {% endif %}
-    </nav>
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
 </header>
 
 <main class="progress-dashboard">
@@ -39,7 +25,7 @@
 
     {% if course_completed %}
         <section class="course-completed-banner">
-            <div class="completion-icon-large">✓</div>
+            <div class="completion-icon-large">&#10003;</div>
             <div>
                 <h2>Course Completed!</h2>
                 <p>You have completed all lessons in this course.</p>
@@ -150,7 +136,7 @@
                         {% for lesson in module.lessons.all %}
                             <div class="dashboard-lesson-row">
                                 <span class="lesson-progress-icon">
-                                    {% if lesson.is_completed %}✓{% else %}○{% endif %}
+                                    {% if lesson.is_completed %}&#10003;{% else %}&#9675;{% endif %}
                                 </span>
 
                                 <a href="{% url 'lesson_detail' course.slug lesson.id %}">
@@ -186,66 +172,142 @@
     <section class="dashboard-section">
         <div class="section-heading">
             <h2>Recent Assessments</h2>
-            <p>Your latest submissions for this course.</p>
+            <p>Your latest submissions and quiz attempts for this course.</p>
+
+            <div class="page-actions">
+                <a href="{% url 'quiz_history' course.slug %}">
+                    View Quiz History
+                </a>
+            </div>
         </div>
 
-        {% if recent_submissions %}
+        {% if recent_assessments %}
             <div class="assessment-list">
-                {% for submission in recent_submissions %}
+
+                {% for assessment in recent_assessments %}
+
                     <article class="assessment-card">
+
                         <div class="assessment-main">
-                            <h3>{{ submission.activity.title }}</h3>
+
+                            <h3>
+                                {{ assessment.title }}
+                            </h3>
+
                             <p class="assessment-lesson">
-                                Lesson: {{ submission.activity.lesson.title }}
+                                Lesson: {{ assessment.lesson_title }}
                             </p>
+
                             <p class="assessment-date">
-                                Submitted {{ submission.submitted_at|date:"M d, Y H:i" }}
+                                {% if assessment.kind == "quiz" %}
+                                    Completed
+                                {% else %}
+                                    Submitted
+                                {% endif %}
+                                {{ assessment.submitted_at|date:"M d, Y H:i" }}
                             </p>
+
                         </div>
 
                         <div class="assessment-result">
+
                             <div class="assessment-score">
-                                {% if submission.score is not None %}
-                                    {{ submission.score }}/{{ submission.activity.max_score }}
+
+                                {% if assessment.score is not None %}
+                                    {{ assessment.score }}/{{ assessment.max_score }}
                                 {% else %}
                                     Pending
                                 {% endif %}
+
                             </div>
 
-                            {% if submission.score is not None %}
-                                <span class="assessment-status graded-status">
-                                    Graded
-                                </span>
-                            {% elif submission.status == "error" %}
-                                <span class="assessment-status error-status">
-                                    Needs correction
-                                </span>
+                            {% if assessment.kind == "quiz" %}
+
+                                <div class="assessment-percentage">
+                                    {{ assessment.percentage }}%
+                                </div>
+
+                                {% if assessment.status == "Quiz Passed" %}
+
+                                    <span class="assessment-status graded-status">
+                                        Quiz Passed
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="assessment-status error-status">
+                                        Not passed
+                                    </span>
+
+                                {% endif %}
+
                             {% else %}
-                                <span class="assessment-status pending-status">
-                                    Pending
-                                </span>
+
+                                {% if assessment.status == "Graded" %}
+
+                                    <span class="assessment-status graded-status">
+                                        Graded
+                                    </span>
+
+                                {% elif assessment.status == "Needs correction" %}
+
+                                    <span class="assessment-status error-status">
+                                        Needs correction
+                                    </span>
+
+                                {% elif assessment.status == "Error" %}
+
+<span class="assessment-status error-status">
+    Error
+</span>
+
+                                {% else %}
+
+                                    <span class="assessment-status pending-status">
+                                        Pending
+                                    </span>
+
+                                {% endif %}
+
                             {% endif %}
+
                         </div>
 
-                        {% if submission.feedback %}
+                        {% if assessment.feedback %}
+
                             <div class="assessment-feedback">
+
                                 <strong>Instructor Feedback</strong>
-                                <p>{{ submission.feedback }}</p>
+
+                                <p>
+                                    {{ assessment.feedback }}
+                                </p>
+
                             </div>
+
                         {% endif %}
+
                     </article>
+
                 {% endfor %}
+
             </div>
+
         {% else %}
+
             <div class="empty-dashboard-message">
-                <div class="empty-icon">📝</div>
-                <h3>No submissions yet</h3>
+
+                <h3>No assessments yet</h3>
+
                 <p>
-                    Complete an activity and submit your work to see
-                    assessments here.
+                    Your submissions and quiz results will appear here
+                    after you complete assessments.
                 </p>
+
             </div>
+
         {% endif %}
+
     </section>
 
     <div class="dashboard-navigation">
@@ -265,3 +327,6 @@
 
 </body>
 </html>
+
+
+

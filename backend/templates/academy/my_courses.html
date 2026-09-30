@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,18 +9,8 @@
 </head>
 <body>
 
-<header>
-    <nav class="navbar">
-        <a class="logo" href="{% url 'home' %}">Coding Academy</a>
-        <a href="{% url 'home' %}">Home</a>
-        <a href="{% url 'course_list' %}">Courses</a>
-        <a href="{% url 'my_courses' %}">My Courses</a>
-        <span class="nav-user">Welcome, {{ user.username }}</span>
-        <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
-                {% csrf_token %}
-                <button type="submit" class="nav-logout">Logout</button>
-            </form>
-    </nav>
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
 </header>
 
 <main class="container">
@@ -36,6 +26,41 @@
                     <p><strong>Level:</strong> {{ enrollment.course.level }}</p>
                     <p><strong>Duration:</strong> {{ enrollment.course.duration }}</p>
                     <p><strong>Enrolled:</strong> {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
+                    <div class="course-progress">
+                        <h3>Course Progress</h3>
+
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ enrollment.progress.activity_percentage }}%;"></div>
+                        </div>
+
+                        <p>
+                            <strong>{{ enrollment.progress.activity_percentage }}%</strong>
+                            activities completed
+                        </p>
+
+                        <p>
+                            <strong>Lessons:</strong>
+                            {{ enrollment.progress.lessons_completed }}/{{ enrollment.progress.lessons_total }}
+                        </p>
+
+                        <p>
+                            <strong>Activities:</strong>
+                            {{ enrollment.progress.activities_completed }}/{{ enrollment.progress.activities_total }}
+                        </p>
+
+                        {% if enrollment.progress.average_score is not None %}
+                            <p>
+                                <strong>Average Score:</strong>
+                                {{ enrollment.progress.average_score }}%
+                            </p>
+                        {% else %}
+                            <p>
+                                <strong>Average Score:</strong>
+                                Not graded
+                            </p>
+                        {% endif %}
+                    </div>
+
                     <a href="{% url 'course_detail' enrollment.course.slug %}" class="btn">
                         Continue Learning
                     </a>
@@ -57,3 +82,4 @@
 
 </body>
 </html>
+

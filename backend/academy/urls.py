@@ -25,6 +25,32 @@ urlpatterns = [
     ),
 
     # ========================================================
+    # STUDENT NOTIFICATIONS
+    # ========================================================
+
+    path(
+        "notifications/",
+        views.notification_list,
+        name="notification_list",
+    ),
+
+    path(
+        "notifications/<int:notification_id>/read/",
+        views.notification_read,
+        name="notification_read",
+    ),
+
+    # ========================================================
+    # STUDENT ASSESSMENT HISTORY
+    # ========================================================
+
+    path(
+        "assessments/",
+        views.student_assessment_history,
+        name="student_assessment_history",
+    ),
+
+    # ========================================================
     # ENROLL IN COURSE
     # ========================================================
 
@@ -35,8 +61,40 @@ urlpatterns = [
     ),
 
     # ========================================================
+    # STUDENT RESUBMISSION
+    # ========================================================
+
+    path(
+        "assessments/<int:submission_id>/resubmit/",
+        views.student_resubmit_submission,
+        name="student_resubmit_submission",
+    ),
+
+    # ========================================================
     # INSTRUCTOR SUBMISSIONS
     # ========================================================
+
+    path(
+
+        "instructor/quizzes/",
+
+        views.instructor_quizzes,
+
+        name="instructor_quizzes",
+
+    ),
+
+
+    path(
+
+        "instructor/quizzes/<int:quiz_id>/",
+
+        views.instructor_quiz_edit,
+
+        name="instructor_quiz_edit",
+
+    ),
+
 
     path(
         "instructor/submissions/",
@@ -49,6 +107,11 @@ urlpatterns = [
         views.review_submission,
         name="review_submission",
     ),
+    path(
+        "submissions/<int:submission_id>/attachment/",
+        views.submission_attachment,
+        name="submission_attachment",
+    ),
 
     # ========================================================
     # SUBMISSION HISTORY
@@ -59,6 +122,17 @@ urlpatterns = [
         views.submission_history,
         name="submission_history",
     ),
+
+
+    # ========================================================
+# QUIZ
+# ========================================================
+
+path(
+    "<slug:course_slug>/lessons/<int:lesson_id>/activities/<int:activity_id>/quiz/",
+    views.quiz_take,
+    name="quiz_take",
+),
 
     # ========================================================
     # ACTIVITY DETAIL
@@ -85,6 +159,17 @@ urlpatterns = [
     # ========================================================
 
     path(
+        "<slug:course_slug>/quiz-history/",
+        views.quiz_history,
+        name="quiz_history",
+    ),
+    path(
+        "<slug:course_slug>/quiz-history/<int:attempt_id>/",
+        views.quiz_attempt_review,
+        name="quiz_attempt_review",
+    ),
+    
+    path(
         "<slug:course_slug>/progress/",
         views.course_progress,
         name="course_progress",
@@ -94,9 +179,37 @@ urlpatterns = [
     # COURSE DETAIL
     # ========================================================
 
+    # ========================================================
+    # INSTRUCTOR COURSE CONTENT
+    # ========================================================
+
+    path(
+        "instructor/content/",
+        views.instructor_content_management,
+        name="instructor_content_management",
+    ),
+
+    path(
+        "instructor/content/<int:course_id>/",
+        views.instructor_course_content,
+        name="instructor_course_content",
+    ),
+
+    # ========================================================
+    # INSTRUCTOR DASHBOARD
+    # ========================================================
+
+    path(
+        "instructor/",
+        views.instructor_dashboard,
+        name="instructor_dashboard",
+    ),
+
     path(
         "<slug:slug>/",
         views.course_detail,
         name="course_detail",
     ),
 ]
+
+

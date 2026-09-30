@@ -1,0 +1,165 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>{{ course.title }} Quiz History | Coding Academy</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+</head>
+
+<body>
+
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
+
+<main class="progress-dashboard">
+
+    <section class="progress-header">
+
+        <p>
+            <a href="{% url 'course_progress' course.slug %}">
+                &larr; Back to Progress
+            </a>
+        </p>
+
+        <h1>
+            Quiz History
+        </h1>
+
+        <p class="progress-subtitle">
+            Review every quiz attempt you have completed
+            in {{ course.title }}.
+        </p>
+
+    </section>
+
+    {% if history %}
+
+        <section class="dashboard-section">
+
+            <div class="assessment-list">
+
+                {% for item in history %}
+
+                    <article class="assessment-card">
+
+                        <div class="assessment-main">
+
+                            <h3>
+                                {{ item.activity.title }}
+                            </h3>
+
+                            <p class="assessment-lesson">
+                                Lesson:
+                                {{ item.lesson.title }}
+                            </p>
+
+                            <p class="assessment-date">
+                                Attempted
+                                {{ item.completed_at|date:"M d, Y H:i" }}
+                            </p>
+
+                        </div>
+
+                        <div class="assessment-result">
+
+                            <div class="assessment-score">
+                                {{ item.score }}/{{ item.total_points }}
+                            </div>
+
+                            <div class="assessment-percentage">
+                                {{ item.percentage }}%
+                            </div>
+
+                            {% if item.passed %}
+
+                                <span
+                                    class="assessment-status graded-status"
+                                >
+                                    Quiz Passed
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="assessment-status error-status"
+                                >
+                                    Not passed
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+                            <div class="page-actions">
+                                <a
+                                    href="{% url 'quiz_attempt_review' course.slug item.attempt.id %}"
+                                >
+                                    Review Attempt
+                                </a>
+                            </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+    {% else %}
+
+        <section class="dashboard-section">
+
+            <div class="empty-dashboard-message">
+
+                <h3>
+                    No quiz attempts yet
+                </h3>
+
+                <p>
+                    Completed quiz attempts will appear here.
+                </p>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+    <section class="page-actions">
+
+        <a
+            href="{% url 'course_progress' course.slug %}"
+        >
+            Back to Course Progress
+        </a>
+
+        <a
+            href="{% url 'course_detail' course.slug %}"
+        >
+            Back to Course
+        </a>
+
+    </section>
+
+</main>
+
+<footer>
+    <p>
+        Â© 2026 Coding Academy. All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>
+

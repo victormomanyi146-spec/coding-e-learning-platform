@@ -14,19 +14,9 @@
 
 <body>
 
-    <header class="page-header">
-
-        <div class="container">
-
-            <h1>My Submissions</h1>
-
-            <p>
-                View your submitted activities, scores, and feedback.
-            </p>
-
-        </div>
-
-    </header>
+    <header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
 
 
     <main class="container">
@@ -34,7 +24,7 @@
         <div class="page-actions">
 
             <a href="{% url 'course_list' %}">
-                ← Back to Courses
+                &larr; Back to Courses
             </a>
 
         </div>
@@ -101,6 +91,44 @@
                             </p>
 
                         </div>
+
+
+                        {% if submission.response_text %}
+                            <div class="submission-feedback">
+                                <h3>Submitted Response</h3>
+                                <p>{{ submission.response_text }}</p>
+                            </div>
+                        {% endif %}
+
+
+                        {% if submission.github_url %}
+                            <div class="submission-feedback">
+                                <h3>GitHub Submission</h3>
+                                <p>
+                                    <a
+                                        href="{{ submission.github_url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Open GitHub Submission
+                                    </a>
+                                </p>
+                            </div>
+                        {% endif %}
+
+
+                        {% if submission.attachment %}
+                            <div class="submission-feedback">
+                                <h3>Attachment</h3>
+                                <p>
+                                    <a
+                                        href="{% url 'submission_attachment' submission.id %}"
+                                    >
+                                        View / Download Attachment
+                                    </a>
+                                </p>
+                            </div>
+                        {% endif %}
 
 
                         {% if submission.feedback %}

@@ -13,22 +13,9 @@
 
 <body>
 
-    <header>
-        <nav class="navbar">
-            <a class="logo" href="{% url 'home' %}">Coding Academy</a>
-            <a href="{% url 'home' %}">Home</a>
-            <a href="{% url 'course_list' %}">Courses</a>
-            {% if user.is_authenticated %}
-                <a href="{% url 'my_courses' %}">My Courses</a>
-                <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
-                {% csrf_token %}
-                <button type="submit" class="nav-logout">Logout</button>
-            </form>
-            {% else %}
-                <a href="{% url 'login' %}?next={{ request.path }}">Login</a>
-            {% endif %}
-        </nav>
-    </header>
+    <header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
 
     <main>
 
@@ -37,7 +24,7 @@
 
             <p>
                 <a href="{% url 'course_detail' course.slug %}">
-                    ← Back to {{ course.title }}
+                    &larr; Back to {{ course.title }}
                 </a>
             </p>
 
@@ -107,7 +94,7 @@
 
                             {% if activity.id in completed_activity_ids %}
                                 <p class="completion-status">
-                                    ✓ Completed
+                                    âœ“ Completed
                                 </p>
                             {% else %}
                                 <p class="completion-status">
@@ -154,7 +141,7 @@
         <section class="lesson-navigation">
 
             <a href="{% url 'course_detail' course.slug %}">
-                ← Back to Course
+                &larr; Back to Course
             </a>
 
         </section>

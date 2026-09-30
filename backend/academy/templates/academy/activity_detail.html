@@ -191,31 +191,8 @@
 <body>
 
 
-<header>
-
-    <nav>
-
-        <a href="/">
-            <strong>Coding E-Learning Platform</strong>
-        </a>
-
-        <a href="/">
-            Home
-        </a>
-
-        <a href="{% url 'course_list' %}">
-            Courses
-        </a>
-
-        <a href="#">
-            About
-        </a>
-
-        <a href="#">
-            Contact
-        </a>
-
-    </nav>
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
 </header>
 
 
@@ -265,7 +242,9 @@
 
         <div class="status">
 
-            {% if is_completed %}
+            {% if submission and submission.status == "correction" %}
+                <strong>Submission needs correction</strong>
+            {% elif is_completed %}
                 <strong>Completed</strong>
             {% elif submission and submission.status == "error" %}
                 <strong>Submission needs correction</strong>
@@ -452,6 +431,214 @@
 
     </section>
 
+    {% elif activity.activity_type == "quiz" %}
+
+    <section class="editor-section">
+
+        <h2>Quiz</h2>
+
+        <p>
+            Complete this quiz to test your understanding of the lesson.
+            Your result will be graded automatically.
+        </p>
+
+        <div class="button-row">
+
+            <a
+                href="{% url 'quiz_take' course.slug lesson.id activity.id %}"
+                class="submit-button"
+            >
+                Start Quiz
+            </a>
+
+        </div>
+
+    </section>
+
+    {% elif activity.activity_type == "assignment" or activity.activity_type == "lab" %}
+
+    <section class="editor-section">
+
+        <h2>
+            {% if activity.activity_type == "assignment" %}
+                Assignment Submission
+            {% else %}
+                Lab Submission
+            {% endif %}
+        </h2>
+
+        <p>
+            Submit your completed work for instructor assessment.
+            You may provide a written response, a GitHub URL,
+            an attachment, or a combination of these.
+        </p>
+
+        <form method="post" enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            <div class="editor-box">
+
+                <label for="response-text">
+                    <strong>Your Response / Work Summary</strong>
+                </label>
+
+                <textarea
+                    id="response-text"
+                    name="response_text"
+                    class="program-input"
+                    rows="10"
+                    maxlength="20000"
+                    placeholder="Describe your solution, implementation, findings, or completed work..."
+                >{{ response_text }}</textarea>
+
+            </div>
+
+            <div class="editor-box">
+
+                <label for="github-url">
+                    <strong>GitHub URL</strong>
+                </label>
+
+                <p class="input-help">
+                    Optional. Paste the GitHub repository or submission URL.
+                </p>
+
+                <input
+                    type="url"
+                    id="github-url"
+                    name="github_url"
+                    value="{{ github_url }}"
+                    maxlength="500"
+                    placeholder="https://github.com/username/repository"
+                    class="program-input"
+                >
+
+            </div>
+
+            <div class="editor-box">
+
+                <label for="attachment">
+                    <strong>Attachment</strong>
+                </label>
+
+                <p class="input-help">
+                    Optional supporting file. Maximum size: 10 MB.
+                </p>
+
+                <input
+                    type="file"
+                    id="attachment"
+                    name="attachment"
+                >
+
+                {% if submission and submission.attachment %}
+
+                    <p>
+                        Existing attachment:
+                        <a
+                            href="{% url 'submission_attachment' submission.id %}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            View attachment
+                        </a>
+                    </p>
+
+                {% endif %}
+
+            </div>
+
+            <div class="button-row">
+
+                <button
+                    type="submit"
+                    name="submit_activity"
+                    value="1"
+                    class="submit-button"
+                >
+                    Submit for Assessment
+                </button>
+
+            </div>
+
+        </form>
+
+        {% if submission %}
+
+            <div class="quiz-result">
+
+                <h3>Latest Submission</h3>
+
+                <p>
+                    <strong>Status:</strong>
+                    {{ submission.status }}
+                </p>
+
+                <p>
+                    <strong>Submitted:</strong>
+                    {{ submission.submitted_at }}
+                </p>
+
+                {% if submission.score is not None %}
+
+                    <p>
+                        <strong>Score:</strong>
+                        {{ submission.score }} / {{ activity.max_score }}
+                    </p>
+
+                {% endif %}
+
+                {% if submission.feedback %}
+
+                    <p>
+                        <strong>Instructor Feedback:</strong>
+                    </p>
+
+                    <div class="output-box">
+                        {{ submission.feedback|linebreaks }}
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+        {% if correction_submission %}
+            <div class="error-section">
+                <h3>Correction Required</h3>
+
+                <p>
+                    <strong>Status:</strong>
+                    Needs correction
+                </p>
+
+                {% if correction_submission.feedback %}
+                    <p>
+                        <strong>Instructor Feedback:</strong>
+                    </p>
+
+                    <div class="error-box">
+                        {{ correction_submission.feedback|linebreaks }}
+                    </div>
+                {% endif %}
+
+                {% if correction_submission.score is not None %}
+                    <p>
+                        <strong>Score:</strong>
+                        {{ correction_submission.score }} / {{ activity.max_score }}
+                    </p>
+                {% endif %}
+
+                <p>
+                    Please correct your work and submit the activity again.
+                </p>
+            </div>
+        {% endif %}
+
+    </section>
+
     {% else %}
 
     <section class="editor-section">
@@ -559,7 +746,19 @@
             {{ submission.submitted_at }}
         </p>
 
-    </section>
+    
+
+        {% if submission.feedback %}
+            <p>
+                <strong>Instructor Feedback:</strong>
+            </p>
+
+            <div class="output-box">
+                {{ submission.feedback|linebreaks }}
+            </div>
+        {% endif %}
+
+        </section>
 
     {% endif %}
 
@@ -569,34 +768,52 @@
     <!-- ================================================= -->
 
     <section class="completion-section">
+
         <h2>Activity Status</h2>
 
-        {% if is_completed %}
+        {% if submission and submission.status == "correction" %}
+
             <p>
-                <strong>✓ Completed.</strong>
+                <strong>Correction required.</strong>
+                Review the instructor feedback and submit the corrected
+                work again.
+            </p>
+
+        {% elif is_completed %}
+
+            <p>
+                <strong>&check; Completed.</strong>
                 Your progress has been recorded.
             </p>
+
         {% elif submission and submission.status == "error" %}
+
             <p>
                 Your latest submission contains an error. Correct it and
                 submit again to complete the activity.
             </p>
+
         {% elif submission %}
+
             <p>
                 Your work has been submitted and is awaiting assessment.
             </p>
+
         {% elif request.user.is_authenticated %}
+
             <p>
                 Complete the activity and submit or mark it complete to
                 record your progress.
             </p>
+
         {% else %}
+
             <p>
-                Please
-                <a href="{% url 'login' %}?next={{ request.path }}">log in</a>
-                to submit and track your progress.
+                Please log in to complete this activity.
             </p>
+
         {% endif %}
+
     </section>
 
 
@@ -615,6 +832,7 @@
         </a>
 
     </div>
+
 
 
 </main>
@@ -659,3 +877,8 @@ function resetEditor() {
 </body>
 
 </html>
+
+
+
+
+

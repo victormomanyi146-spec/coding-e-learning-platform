@@ -19,28 +19,8 @@
 
 <body>
 
-<header>
-
-    <nav>
-
-        <a href="/">
-            Home
-        </a>
-
-        |
-
-        <a href="{% url 'course_list' %}">
-            Courses
-        </a>
-
-        |
-
-        <a href="/admin/">
-            Admin
-        </a>
-
-    </nav>
-
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
 </header>
 
 
@@ -49,50 +29,112 @@
     <section class="locked-lesson">
 
         <div class="lock-icon">
-            🔒
+            &#128274;
         </div>
 
-        <h1>
-            Lesson Locked
-        </h1>
+        {% if enrollment_required %}
 
-        <h2>
-            {{ lesson.title }}
-        </h2>
+            <h1>
+                Enrollment Required
+            </h1>
 
-        <p>
-            You must complete the previous lesson
-            before accessing this lesson.
-        </p>
-
-        <div class="unlock-requirement">
-
-            <strong>
-                Complete first:
-            </strong>
+            <h2>
+                {{ lesson.title }}
+            </h2>
 
             <p>
-                {{ previous_lesson.title }}
+                You must enroll in this course before you can
+                access its lessons and activities.
             </p>
 
-        </div>
+            <div class="unlock-requirement">
 
+                <strong>
+                    Course:
+                </strong>
 
-        <div class="locked-actions">
+                <p>
+                    {{ course.title }}
+                </p>
 
-            <a
-                href="{% url 'lesson_detail' course.slug previous_lesson.id %}"
-            >
-                Go to Previous Lesson
-            </a>
+            </div>
 
-            <a
-                href="{% url 'course_detail' course.slug %}"
-            >
-                Back to Course
-            </a>
+            <div class="locked-actions">
 
-        </div>
+                <a
+                    href="{% url 'course_detail' course.slug %}"
+                >
+                    View Course &amp; Enroll
+                </a>
+
+                <a
+                    href="{% url 'course_list' %}"
+                >
+                    Back to Courses
+                </a>
+
+            </div>
+
+        {% else %}
+
+            <h1>
+                Lesson Locked
+            </h1>
+
+            <h2>
+                {{ lesson.title }}
+            </h2>
+
+            <p>
+                You must complete the previous lesson
+                before accessing this lesson.
+            </p>
+
+            {% if previous_lesson %}
+
+                <div class="unlock-requirement">
+
+                    <strong>
+                        Complete first:
+                    </strong>
+
+                    <p>
+                        {{ previous_lesson.title }}
+                    </p>
+
+                </div>
+
+                <div class="locked-actions">
+
+                    <a
+                        href="{% url 'lesson_detail' course.slug previous_lesson.id %}"
+                    >
+                        Go to Previous Lesson
+                    </a>
+
+                    <a
+                        href="{% url 'course_detail' course.slug %}"
+                    >
+                        Back to Course
+                    </a>
+
+                </div>
+
+            {% else %}
+
+                <div class="locked-actions">
+
+                    <a
+                        href="{% url 'course_detail' course.slug %}"
+                    >
+                        Back to Course
+                    </a>
+
+                </div>
+
+            {% endif %}
+
+        {% endif %}
 
     </section>
 

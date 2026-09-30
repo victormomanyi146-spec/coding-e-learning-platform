@@ -1,0 +1,613 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Manage {{ quiz.activity.title }} | Coding Academy
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+</head>
+
+<body>
+{% include "academy/instructor_nav.html" %}
+
+
+<header>
+    <nav class="navbar">
+
+        <a
+            class="logo"
+            href="{% url 'home' %}"
+        >
+            Coding Academy
+        </a>
+
+        <a href="{% url 'instructor_quizzes' %}">
+            Quiz Management
+        </a>
+
+        <a href="{% url 'instructor_submissions' %}">
+            Submissions
+        </a>
+
+        <a href="{% url 'my_courses' %}">
+            My Courses
+        </a>
+
+        <form
+            method="post"
+            action="{% url 'logout' %}"
+            class="nav-logout-form"
+        >
+            {% csrf_token %}
+
+            <button
+                type="submit"
+                class="nav-logout"
+            >
+                Logout
+            </button>
+        </form>
+
+        {% if user.is_staff %}
+            <a href="/admin/">
+                Admin
+            </a>
+        {% endif %}
+
+    </nav>
+</header>
+
+<main class="progress-dashboard">
+
+    <section class="progress-header">
+
+        <p>
+            <a href="{% url 'instructor_quizzes' %}">
+                &larr; Back to Quiz Management
+            </a>
+        </p>
+
+        <h1>
+            {{ quiz.activity.title }}
+        </h1>
+
+        <p class="progress-subtitle">
+            {{ course.title }}
+            &middot;
+            {{ lesson.title }}
+        </p>
+
+    </section>
+
+    {% if error %}
+
+        <section class="submission-card">
+
+            <div class="completion-pending">
+
+                <h3>
+                    Cannot save changes
+                </h3>
+
+                <p>
+                    {{ error }}
+                </p>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+    <section class="submission-card">
+
+        <div class="section-heading">
+
+            <h2>
+                Quiz Settings
+            </h2>
+
+        </div>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="action"
+                value="update_quiz"
+            >
+
+            <label>
+                Passing score (%)
+
+                <input
+                    type="number"
+                    name="passing_score"
+                    min="0"
+                    max="100"
+                    value="{{ quiz.passing_score }}"
+                    required
+                >
+            </label>
+
+            <div class="page-actions">
+
+                <button
+                    type="submit"
+                    class="editor-button"
+                >
+                    Save Quiz Settings
+                </button>
+
+            </div>
+
+        </form>
+
+        <p>
+            Maximum score:
+            <strong>
+                {{ quiz.activity.max_score }}
+            </strong>
+        </p>
+
+    </section>
+
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+
+            <h2>
+                Quiz Readiness
+            </h2>
+
+            {% if quiz_ready %}
+
+                <div class="completion-success">
+
+                    <h3>
+                        Quiz Ready
+                    </h3>
+
+                    <p>
+                        All active questions have choices and
+                        exactly one correct answer.
+                    </p>
+
+                </div>
+
+            {% else %}
+
+                <div class="completion-pending">
+
+                    <h3>
+                        Quiz Needs Attention
+                    </h3>
+
+                    <p>
+                        Resolve the following before treating
+                        this quiz as ready for students:
+                    </p>
+
+                    <ul>
+
+                        {% for validation_error in validation_errors %}
+
+                            <li>
+                                {{ validation_error }}
+                            </li>
+
+                        {% endfor %}
+
+                    </ul>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+
+            <h2>
+                Add Question
+            </h2>
+
+        </div>
+
+        <form
+            method="post"
+            class="submission-card"
+        >
+
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="action"
+                value="add_question"
+            >
+
+            <label>
+                Question
+
+                <textarea
+                    name="question_text"
+                    rows="4"
+                    required
+                ></textarea>
+            </label>
+
+            <label>
+                Points
+
+                <input
+                    type="number"
+                    name="points"
+                    min="0"
+                    value="10"
+                    required
+                >
+            </label>
+
+            <div class="page-actions">
+
+                <button
+                    type="submit"
+                    class="editor-button"
+                >
+                    Add Question
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+    {% for question in questions %}
+
+        <section class="dashboard-section">
+
+            <article class="assessment-card">
+
+                <div class="assessment-main">
+
+                    <h2>
+                        Question {{ question.order }}
+                    </h2>
+
+                </div>
+
+                <form method="post">
+
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="update_question"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="question_id"
+                        value="{{ question.id }}"
+                    >
+
+                    <label>
+                        Question text
+
+                        <textarea
+                            name="question_text"
+                            rows="4"
+                            required
+                        >{{ question.question_text }}</textarea>
+                    </label>
+
+                    <label>
+                        Points
+
+                        <input
+                            type="number"
+                            name="points"
+                            min="0"
+                            value="{{ question.points }}"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        Order
+
+                        <input
+                            type="number"
+                            name="order"
+                            min="1"
+                            value="{{ question.order }}"
+                            required
+                        >
+                    </label>
+
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="is_active"
+                            {% if question.is_active %}checked{% endif %}
+                        >
+
+                        Active question
+                    </label>
+
+                    <div class="page-actions">
+
+                        <button
+                            type="submit"
+                            class="editor-button"
+                        >
+                            Save Question
+                        </button>
+
+                    </div>
+
+                </form>
+
+                <div class="assessment-feedback">
+
+                    <h3>
+                        Choices
+                    </h3>
+
+                    {% for choice in question.choices.all %}
+
+                        <form
+                            method="post"
+                            class="submission-card"
+                        >
+
+                            {% csrf_token %}
+
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="update_choice"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="choice_id"
+                                value="{{ choice.id }}"
+                            >
+
+                            <label>
+                                Choice text
+
+                                <input
+                                    type="text"
+                                    name="choice_text"
+                                    value="{{ choice.choice_text }}"
+                                    required
+                                >
+                            </label>
+
+                            <label>
+                                Order
+
+                                <input
+                                    type="number"
+                                    name="order"
+                                    min="1"
+                                    value="{{ choice.order }}"
+                                    required
+                                >
+                            </label>
+
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    name="is_correct"
+                                    {% if choice.is_correct %}checked{% endif %}
+                                >
+
+                                Correct answer
+                            </label>
+
+                            
+                        <div class="page-actions">
+
+                            <button
+                                type="submit"
+                                class="editor-button"
+                            >
+                                Save Choice
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="delete_choice"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="choice_id"
+                            value="{{ choice.id }}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="editor-button"
+                            onclick="return confirm('Delete this choice?');"
+                        >
+                            Delete Choice
+                        </button>
+
+                    </form>
+
+                        </form>
+
+                    {% empty %}
+
+                        <p>
+                            No choices yet.
+                        </p>
+
+                    {% endfor %}
+
+                    <form
+                        method="post"
+                        class="submission-card"
+                    >
+
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="add_choice"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="question_id"
+                            value="{{ question.id }}"
+                        >
+
+                        <h4>
+                            Add Choice
+                        </h4>
+
+                        <label>
+                            Choice text
+
+                            <input
+                                type="text"
+                                name="choice_text"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="is_correct"
+                            >
+
+                            Correct answer
+                        </label>
+
+                        <div class="page-actions">
+
+                            <button
+                                type="submit"
+                                class="editor-button"
+                            >
+                                Add Choice
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+                <form method="post">
+
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="delete_question"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="question_id"
+                        value="{{ question.id }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="editor-button"
+                    >
+                        Delete Question
+                    </button>
+
+                </form>
+
+            </article>
+
+        </section>
+
+    {% empty %}
+
+        <section class="dashboard-section">
+
+            <div class="empty-dashboard-message">
+
+                <h3>
+                    No questions yet
+                </h3>
+
+                <p>
+                    Add your first question above.
+                </p>
+
+            </div>
+
+        </section>
+
+    {% endfor %}
+
+    <section class="page-actions">
+
+        <a href="{% url 'instructor_quizzes' %}">
+            Back to Quiz Management
+        </a>
+
+        <a
+            href="{% url 'quiz_take' course.slug lesson.id quiz.activity.id %}"
+        >
+            View Student Quiz
+        </a>
+
+    </section>
+
+</main>
+
+<footer>
+    <p>
+        &copy; 2026 Coding Academy. All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>
+

@@ -1,15 +1,17 @@
-﻿services:
+services:
   - type: web
     name: coding-e-learning-platform
     runtime: python
     rootDir: backend
-    buildCommand: ./build.sh
+    buildCommand: bash build.sh
     startCommand: gunicorn config.wsgi:application
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DJANGO_DEBUG
         value: "False"
+      - key: DJANGO_TIME_ZONE
+        value: "Africa/Nairobi"
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
       - key: DJANGO_CSRF_TRUSTED_ORIGINS

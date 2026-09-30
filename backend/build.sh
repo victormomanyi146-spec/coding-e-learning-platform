@@ -8,3 +8,4 @@ python manage.py collectstatic --no-input
 python manage.py migrate
 
 python manage.py loaddata academy_content.json
+python manage.py check --deploy

@@ -1,0 +1,871 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ course.title }} - Content Management</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0 0 6px;
+        }
+
+        .header p {
+            margin: 0;
+            color: #6b7280;
+        }
+
+        .section,
+        .module,
+        .lesson,
+        .activity {
+            background: white;
+            border-radius: 10px;
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .section {
+            padding: 22px;
+            margin-bottom: 24px;
+        }
+
+        .module {
+            padding: 18px;
+            margin-top: 18px;
+            border-left: 5px solid #2563eb;
+        }
+
+        .lesson {
+            padding: 16px;
+            margin-top: 16px;
+            border-left: 4px solid #10b981;
+        }
+
+        .activity {
+            padding: 15px;
+            margin-top: 12px;
+            border-left: 4px solid #7c3aed;
+        }
+
+        .form-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+        }
+
+        .full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 9px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .checkbox-row input {
+            width: auto;
+        }
+
+        .btn {
+            border: none;
+            padding: 9px 14px;
+            border-radius: 7px;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background: #374151;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+        }
+
+        .meta {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .empty {
+            color: #6b7280;
+        }
+
+        .quiz-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .quiz-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+{% include "academy/instructor_nav.html" %}
+
+
+<div class="container">
+
+    <div class="header">
+
+        <div>
+            <h1>{{ course.title }}</h1>
+            <p>Course Content Management</p>
+        </div>
+
+        <div class="actions">
+
+            <a
+                class="btn btn-secondary"
+                href="{% url 'instructor_content_management' %}"
+            >
+                ← All Courses
+            </a>
+
+            <a
+                class="btn"
+                href="{% url 'instructor_quizzes' %}"
+            >
+                Manage Quizzes
+            </a>
+
+        </div>
+
+    </div>
+
+
+    {% if error %}
+
+        <div class="error">
+            {{ error }}
+        </div>
+
+    {% endif %}
+
+
+    <!-- =====================================================
+         ADD MODULE
+         ===================================================== -->
+
+    <div class="section">
+
+        <h2>Add Module</h2>
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="action"
+                value="add_module"
+            >
+
+            <div class="form-grid">
+
+                <div>
+                    <label>Module title</label>
+                    <input
+                        type="text"
+                        name="title"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label>Order</label>
+                    <input
+                        type="number"
+                        name="order"
+                        min="1"
+                        value="1"
+                        required
+                    >
+                </div>
+
+                <div class="full">
+                    <label>Description</label>
+                    <textarea
+                        name="description"
+                    ></textarea>
+                </div>
+
+            </div>
+
+            <button class="btn" type="submit">
+                Add Module
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- =====================================================
+         COURSE STRUCTURE
+         ===================================================== -->
+
+    <div class="section">
+
+        <h2>Course Structure</h2>
+
+        {% for module in modules %}
+
+            <div class="module">
+
+                <h3>
+                    Module {{ module.order }}:
+                    {{ module.title }}
+                </h3>
+
+                {% if module.description %}
+                    <p>{{ module.description }}</p>
+                {% endif %}
+
+
+                <!-- EDIT MODULE -->
+
+                <div class="form-card">
+
+                    <h4>Edit Module</h4>
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="edit_module"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="module_id"
+                            value="{{ module.id }}"
+                        >
+
+                        <div class="form-grid">
+
+                            <div>
+                                <label>Title</label>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    value="{{ module.title }}"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label>Order</label>
+                                <input
+                                    type="number"
+                                    name="order"
+                                    min="1"
+                                    value="{{ module.order }}"
+                                    required
+                                >
+                            </div>
+
+                            <div class="full">
+                                <label>Description</label>
+                                <textarea
+                                    name="description"
+                                >{{ module.description }}</textarea>
+                            </div>
+
+                        </div>
+
+                        <button
+                            class="btn btn-secondary"
+                            type="submit"
+                        >
+                            Save Module
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- ADD LESSON -->
+
+                <div class="form-card">
+
+                    <h4>Add Lesson</h4>
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="add_lesson"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="module_id"
+                            value="{{ module.id }}"
+                        >
+
+                        <div class="form-grid">
+
+                            <div>
+                                <label>Lesson title</label>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label>Order</label>
+                                <input
+                                    type="number"
+                                    name="order"
+                                    min="1"
+                                    value="1"
+                                    required
+                                >
+                            </div>
+
+                            <div class="full">
+                                <label>Lesson content</label>
+                                <textarea
+                                    name="content"
+                                ></textarea>
+                            </div>
+
+                        </div>
+
+                        <button class="btn" type="submit">
+                            Add Lesson
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- LESSONS -->
+
+                {% for lesson in module.lessons.all %}
+
+                    <div class="lesson">
+
+                        <h4>
+                            Lesson {{ lesson.order }}:
+                            {{ lesson.title }}
+                        </h4>
+
+                        {% if lesson.content %}
+                            <p>
+                                {{ lesson.content|truncatechars:240 }}
+                            </p>
+                        {% endif %}
+
+
+                        <!-- EDIT LESSON -->
+
+                        <div class="form-card">
+
+                            <h4>Edit Lesson</h4>
+
+                            <form method="post">
+
+                                {% csrf_token %}
+
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="edit_lesson"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="lesson_id"
+                                    value="{{ lesson.id }}"
+                                >
+
+                                <div class="form-grid">
+
+                                    <div>
+                                        <label>Module</label>
+
+                                        <select name="module_id">
+
+                                            {% for module_option in modules %}
+
+                                                <option
+                                                    value="{{ module_option.id }}"
+                                                    {% if module_option.id == lesson.module_id %}
+                                                        selected
+                                                    {% endif %}
+                                                >
+                                                    {{ module_option.title }}
+                                                </option>
+
+                                            {% endfor %}
+
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label>Order</label>
+                                        <input
+                                            type="number"
+                                            name="order"
+                                            min="1"
+                                            value="{{ lesson.order }}"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="full">
+                                        <label>Title</label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            value="{{ lesson.title }}"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="full">
+                                        <label>Content</label>
+                                        <textarea
+                                            name="content"
+                                        >{{ lesson.content }}</textarea>
+                                    </div>
+
+                                </div>
+
+                                <button
+                                    class="btn btn-secondary"
+                                    type="submit"
+                                >
+                                    Save Lesson
+                                </button>
+
+                            </form>
+
+                        </div>
+
+
+                        <!-- ADD ACTIVITY -->
+
+                        <div class="form-card">
+
+                            <h4>Add Activity</h4>
+
+                            <form method="post">
+
+                                {% csrf_token %}
+
+                                <input
+                                    type="hidden"
+                                    name="action"
+                                    value="add_activity"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="lesson_id"
+                                    value="{{ lesson.id }}"
+                                >
+
+                                <div class="form-grid">
+
+                                    <div>
+                                        <label>Activity title</label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div>
+                                        <label>Activity type</label>
+
+                                        <select
+                                            name="activity_type"
+                                            required
+                                        >
+
+                                            <option value="">
+                                                Select type
+                                            </option>
+
+                                            {% for value, label in activity_type_choices %}
+
+                                                <option value="{{ value }}">
+                                                    {{ label }}
+                                                </option>
+
+                                            {% endfor %}
+
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label>Order</label>
+                                        <input
+                                            type="number"
+                                            name="order"
+                                            min="1"
+                                            value="1"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div>
+                                        <label>Maximum score</label>
+                                        <input
+                                            type="number"
+                                            name="max_score"
+                                            min="0"
+                                            value="10"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="full">
+                                        <label>Instructions</label>
+                                        <textarea
+                                            name="instructions"
+                                        ></textarea>
+                                    </div>
+
+                                </div>
+
+                                <div class="checkbox-row">
+
+                                    <input
+                                        id="required-new-{{ lesson.id }}"
+                                        type="checkbox"
+                                        name="is_required"
+                                    >
+
+                                    <label
+                                        for="required-new-{{ lesson.id }}"
+                                    >
+                                        Required activity
+                                    </label>
+
+                                </div>
+
+                                <button class="btn" type="submit">
+                                    Add Activity
+                                </button>
+
+                            </form>
+
+                        </div>
+
+
+                        <!-- EXISTING ACTIVITIES -->
+
+                        {% for activity in lesson.activities.all %}
+
+                            <div class="activity">
+
+                                <strong>
+                                    Activity {{ activity.order }}:
+                                    {{ activity.title }}
+                                </strong>
+
+                                <p class="meta">
+
+                                    Type:
+                                    {{ activity.get_activity_type_display }}
+
+                                    · Maximum score:
+                                    {{ activity.max_score }}
+
+                                    ·
+
+                                    {% if activity.is_required %}
+                                        Required
+                                    {% else %}
+                                        Optional
+                                    {% endif %}
+
+                                </p>
+
+
+                                <!-- EDIT ACTIVITY -->
+
+                                <div class="form-card">
+
+                                    <h4>Edit Activity</h4>
+
+                                    <form method="post">
+
+                                        {% csrf_token %}
+
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="edit_activity"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="activity_id"
+                                            value="{{ activity.id }}"
+                                        >
+
+                                        <div class="form-grid">
+
+                                            <div>
+                                                <label>Lesson</label>
+
+                                                <select name="lesson_id">
+
+                                                    {% for lesson_option in lessons %}
+
+                                                        <option
+                                                            value="{{ lesson_option.id }}"
+                                                            {% if lesson_option.id == activity.lesson_id %}
+                                                                selected
+                                                            {% endif %}
+                                                        >
+                                                            {{ lesson_option.title }}
+                                                        </option>
+
+                                                    {% endfor %}
+
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label>Activity type</label>
+
+                                                <select
+                                                    name="activity_type"
+                                                    required
+                                                >
+
+                                                    {% for value, label in activity_type_choices %}
+
+                                                        <option
+                                                            value="{{ value }}"
+                                                            {% if value == activity.activity_type %}
+                                                                selected
+                                                            {% endif %}
+                                                        >
+                                                            {{ label }}
+                                                        </option>
+
+                                                    {% endfor %}
+
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label>Order</label>
+                                                <input
+                                                    type="number"
+                                                    name="order"
+                                                    min="1"
+                                                    value="{{ activity.order }}"
+                                                    required
+                                                >
+                                            </div>
+
+                                            <div>
+                                                <label>Maximum score</label>
+                                                <input
+                                                    type="number"
+                                                    name="max_score"
+                                                    min="0"
+                                                    value="{{ activity.max_score }}"
+                                                    required
+                                                >
+                                            </div>
+
+                                            <div class="full">
+                                                <label>Title</label>
+                                                <input
+                                                    type="text"
+                                                    name="title"
+                                                    value="{{ activity.title }}"
+                                                    required
+                                                >
+                                            </div>
+
+                                            <div class="full">
+                                                <label>Instructions</label>
+                                                <textarea
+                                                    name="instructions"
+                                                >{{ activity.instructions }}</textarea>
+                                            </div>
+
+                                        </div>
+
+                                        <div class="checkbox-row">
+
+                                            <input
+                                                id="required-edit-{{ activity.id }}"
+                                                type="checkbox"
+                                                name="is_required"
+                                                {% if activity.is_required %}
+                                                    checked
+                                                {% endif %}
+                                            >
+
+                                            <label
+                                                for="required-edit-{{ activity.id }}"
+                                            >
+                                                Required activity
+                                            </label>
+
+                                        </div>
+
+                                        <button
+                                            class="btn btn-secondary"
+                                            type="submit"
+                                        >
+                                            Save Activity
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+
+                                {% if activity.activity_type == "quiz" %}
+
+                                    <a
+                                        class="quiz-link"
+                                        href="{% url 'instructor_quizzes' %}"
+                                    >
+                                        → Manage Quiz Questions
+                                    </a>
+
+                                {% endif %}
+
+                            </div>
+
+                        {% empty %}
+
+                            <p class="empty">
+                                No activities have been added yet.
+                            </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% empty %}
+
+                    <p class="empty">
+                        No lessons have been added to this module yet.
+                    </p>
+
+                {% endfor %}
+
+            </div>
+
+        {% empty %}
+
+            <p class="empty">
+                No modules have been added to this course yet.
+            </p>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+</body>
+</html>
+

@@ -1,3 +1,4 @@
+from django.core.validators import FileExtensionValidator
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
@@ -146,6 +147,180 @@ class Activity(models.Model):
         return f"{self.lesson.title} - {self.title}"
 
 
+class Quiz(models.Model):
+
+    activity = models.OneToOneField(
+        Activity,
+        on_delete=models.CASCADE,
+        related_name="quiz",
+    )
+
+    passing_score = models.PositiveIntegerField(
+        default=50,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    def __str__(self):
+        return f"{self.activity.title} - Quiz"
+
+class QuizQuestion(models.Model):
+
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.CASCADE,
+        related_name="questions",
+    )
+
+    question_text = models.TextField()
+
+    order = models.PositiveIntegerField(
+        default=1,
+    )
+
+    points = models.PositiveIntegerField(
+        default=1,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    class Meta:
+        ordering = [
+            "order",
+        ]
+
+        unique_together = (
+            "quiz",
+            "order",
+        )
+
+    def __str__(self):
+        return (
+            f"{self.quiz.activity.title} - "
+            f"Question {self.order}"
+        )
+
+class QuizChoice(models.Model):
+
+    question = models.ForeignKey(
+        QuizQuestion,
+        on_delete=models.CASCADE,
+        related_name="choices",
+    )
+
+    choice_text = models.CharField(
+        max_length=500,
+    )
+
+    is_correct = models.BooleanField(
+        default=False,
+    )
+
+    order = models.PositiveIntegerField(
+        default=1,
+    )
+
+    class Meta:
+        ordering = [
+            "order",
+        ]
+
+        unique_together = (
+            "question",
+            "order",
+        )
+
+    def __str__(self):
+        return (
+            f"{self.question} - "
+            f"Choice {self.order}"
+        )
+
+class QuizAttempt(models.Model):
+
+    quiz = models.ForeignKey(
+        Quiz,
+        on_delete=models.CASCADE,
+        related_name="attempts",
+    )
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="quiz_attempts",
+    )
+
+    score = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    passed = models.BooleanField(
+        default=False,
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    def __str__(self):
+        return (
+            f"{self.student.username} - "
+            f"{self.quiz.activity.title} - "
+            f"Attempt {self.pk}"
+        )
+
+class QuizAnswer(models.Model):
+
+    attempt = models.ForeignKey(
+        QuizAttempt,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+
+    question = models.ForeignKey(
+        QuizQuestion,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+
+    selected_choice = models.ForeignKey(
+        QuizChoice,
+        on_delete=models.CASCADE,
+        related_name="selected_answers",
+        null=True,
+        blank=True,
+    )
+
+    is_correct = models.BooleanField(
+        default=False,
+    )
+
+    points_awarded = models.PositiveIntegerField(
+        default=0,
+    )
+
+    def __str__(self):
+        return (
+            f"{self.attempt.student.username} - "
+            f"{self.question}"
+        )
+
+    class Meta:
+        unique_together = (
+            "attempt",
+            "question",
+        )
+
 class Submission(models.Model):
 
     student = models.ForeignKey(
@@ -161,6 +336,39 @@ class Submission(models.Model):
     )
 
     code = models.TextField()
+
+    response_text = models.TextField(
+        blank=True,
+        help_text="Written response or explanation for assignment/lab submissions.",
+    )
+
+    github_url = models.URLField(
+        blank=True,
+        help_text="Optional GitHub repository or submission URL.",
+    )
+
+    attachment = models.FileField(
+        upload_to="submissions/",
+        blank=True,
+        null=True,
+        help_text="Optional supporting file for an assignment/lab submission.",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=[
+                    "pdf",
+                    "doc",
+                    "docx",
+                    "txt",
+                    "zip",
+                    "py",
+                    "ipynb",
+                    "png",
+                    "jpg",
+                    "jpeg",
+                ]
+            )
+        ],
+    )
 
     submitted_at = models.DateTimeField(
         auto_now_add=True,
@@ -247,3 +455,60 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.course.title}"
+
+class Notification(models.Model):
+
+    NOTIFICATION_TYPES = (
+        ("graded", "Graded"),
+        ("correction", "Needs Correction"),
+        ("general", "General"),
+    )
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+
+    notification_type = models.CharField(
+        max_length=20,
+        choices=NOTIFICATION_TYPES,
+        default="general",
+    )
+
+    title = models.CharField(
+        max_length=200,
+    )
+
+    message = models.TextField()
+
+    link_url = models.CharField(
+        max_length=500,
+        blank=True,
+    )
+
+    is_read = models.BooleanField(
+        default=False,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-created_at",
+        ]
+        indexes = [
+            models.Index(
+                fields=["recipient", "is_read"],
+                name="notif_recipient_read_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.recipient.username} - "
+            f"{self.title}"
+        )
+

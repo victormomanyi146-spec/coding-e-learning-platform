@@ -1,0 +1,231 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ activity.title }} Review | Coding Academy
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+</head>
+
+<body>
+
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
+
+<main class="progress-dashboard">
+
+    <section class="progress-header">
+
+        <p>
+            <a href="{% url 'quiz_history' course.slug %}">
+                &larr; Back to Quiz History
+            </a>
+        </p>
+
+        <h1>
+            {{ activity.title }}
+        </h1>
+
+        <p class="progress-subtitle">
+            Detailed review of your quiz attempt.
+        </p>
+
+    </section>
+
+    <section class="progress-card">
+
+        <div class="card-heading">
+
+            <div>
+
+                <h2>
+                    Attempt Result
+                </h2>
+
+                <p>
+                    Completed
+                    {{ attempt.completed_at|date:"M d, Y H:i" }}
+                </p>
+
+            </div>
+
+            <div class="progress-percentage">
+
+                {{ percentage }}%
+
+            </div>
+
+        </div>
+
+        <p class="progress-summary">
+
+            <strong>
+                {{ attempt.score }}
+            </strong>
+
+            / {{ total_points }} points
+
+        </p>
+
+        {% if attempt.passed %}
+
+            <span class="assessment-status graded-status">
+                Quiz Passed
+            </span>
+
+        {% else %}
+
+            <span class="assessment-status error-status">
+                Not passed
+            </span>
+
+        {% endif %}
+
+    </section>
+
+    <section class="dashboard-section">
+
+        <div class="section-heading">
+
+            <h2>
+                Question Review
+            </h2>
+
+            <p>
+                Compare your selected answers with the correct answers.
+            </p>
+
+        </div>
+
+        <div class="assessment-list">
+
+            {% for item in review %}
+
+                <article class="assessment-card">
+
+                    <div class="assessment-main">
+
+                        <h3>
+                            Question {{ item.question.order }}
+                        </h3>
+
+                        <p>
+                            {{ item.question.question_text }}
+                        </p>
+
+                    </div>
+
+                    <div class="assessment-result">
+
+                        <div class="assessment-score">
+
+                            {{ item.points_awarded }}
+                            /
+                            {{ item.question.points }}
+
+                        </div>
+
+                        {% if item.status == "Correct" %}
+
+                            <span class="assessment-status graded-status">
+                                Correct
+                            </span>
+
+                        {% elif item.status == "Incorrect" %}
+
+                            <span class="assessment-status error-status">
+                                Incorrect
+                            </span>
+
+                        {% else %}
+
+                            <span class="assessment-status pending-status">
+                                Not answered
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="assessment-feedback">
+
+                        <p>
+                            <strong>
+                                Your answer:
+                            </strong>
+
+                            {% if item.selected_choice %}
+                                {{ item.selected_choice.choice_text }}
+                            {% else %}
+                                Not answered
+                            {% endif %}
+                        </p>
+
+                        <p>
+                            <strong>
+                                Correct answer:
+                            </strong>
+
+                            {% if item.correct_choice %}
+                                {{ item.correct_choice.choice_text }}
+                            {% else %}
+                                No correct answer configured
+                            {% endif %}
+                        </p>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
+
+    <section class="page-actions">
+
+        <a href="{% url 'quiz_history' course.slug %}">
+            Back to Quiz History
+        </a>
+
+        <a href="{% url 'course_progress' course.slug %}">
+            Course Progress
+        </a>
+
+        <a href="{% url 'course_detail' course.slug %}">
+            Back to Course
+        </a>
+
+    </section>
+
+</main>
+
+<footer>
+
+    <p>
+        Â© 2026 Coding Academy. All rights reserved.
+    </p>
+
+</footer>
+
+</body>
+
+</html>
+

@@ -1,0 +1,444 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Instructor Dashboard</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            margin-bottom: 6px;
+        }
+
+        .header p {
+            color: #6b7280;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(170px, 1fr));
+            gap: 15px;
+            margin-bottom: 24px;
+        }
+
+        .stat {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, .07);
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat span {
+            color: #6b7280;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 24px;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, .07);
+        }
+
+        .action-card h2 {
+            margin-top: 0;
+        }
+
+        .action-card p {
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            padding: 9px 14px;
+            border-radius: 7px;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 22px;
+            margin-bottom: 24px;
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, .07);
+        }
+
+        .course-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .course-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            padding: 13px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .course-row strong {
+            display: block;
+        }
+
+        .course-row small {
+            color: #6b7280;
+        }
+
+        .submission-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .submission-table th,
+        .submission-table td {
+            text-align: left;
+            padding: 11px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .submission-table th {
+            background: #f9fafb;
+        }
+
+        .pending {
+            font-weight: 600;
+        }
+
+        .empty {
+            color: #6b7280;
+        }
+
+        @media (max-width: 700px) {
+
+            .submission-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .course-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    {% include "academy/instructor_nav.html" %}
+
+    <div class="header">
+
+        <h1>Instructor Dashboard</h1>
+
+        <p>
+            Manage your learning content, assessments and
+            student submissions from one place.
+        </p>
+
+    </div>
+
+
+    <!-- =====================================================
+         PLATFORM CONTENT STATS
+         ===================================================== -->
+
+    <div class="stats">
+
+        <div class="stat">
+            <strong>{{ course_count }}</strong>
+            <span>Courses</span>
+        </div>
+
+        <div class="stat">
+            <strong>{{ modules_count }}</strong>
+            <span>Modules</span>
+        </div>
+
+        <div class="stat">
+            <strong>{{ lessons_count }}</strong>
+            <span>Lessons</span>
+        </div>
+
+        <div class="stat">
+            <strong>{{ activities_count }}</strong>
+            <span>Activities</span>
+        </div>
+
+        <div class="stat">
+            <strong>{{ quizzes_count }}</strong>
+            <span>Quizzes</span>
+        </div>
+
+        <div class="stat">
+            <strong>{{ pending_submissions_count }}</strong>
+            <span>Pending Submissions</span>
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         MAIN INSTRUCTOR ACTIONS
+         ===================================================== -->
+
+    <div class="actions">
+
+        <div class="action-card">
+
+            <h2>Course Content</h2>
+
+            <p>
+                Create and edit modules, lessons and activities
+                across your courses.
+            </p>
+
+            <a
+                class="btn"
+                href="{% url 'instructor_content_management' %}"
+            >
+                Manage Course Content
+            </a>
+
+        </div>
+
+
+        <div class="action-card">
+
+            <h2>Quiz Management</h2>
+
+            <p>
+                Create quiz questions and choices, set passing
+                scores and validate assessments.
+            </p>
+
+            <a
+                class="btn"
+                href="{% url 'instructor_quizzes' %}"
+            >
+                Manage Quizzes
+            </a>
+
+        </div>
+
+
+        <div class="action-card">
+
+            <h2>Submission Review</h2>
+
+            <p>
+                Review student submissions, assign grades and
+                provide feedback.
+            </p>
+
+            <a
+                class="btn"
+                href="{% url 'instructor_submissions' %}"
+            >
+                Review Submissions
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         COURSES
+         ===================================================== -->
+
+    <div class="section">
+
+        <h2>Courses</h2>
+
+        {% if courses %}
+
+            <div class="course-list">
+
+                {% for course in courses %}
+
+                    <div class="course-row">
+
+                        <div>
+
+                            <strong>
+                                {{ course.title }}
+                            </strong>
+
+                            <small>
+                                {{ course.level }}
+                                ·
+                                {{ course.duration }}
+                            </small>
+
+                        </div>
+
+                        <a
+                            class="btn"
+                            href="{% url 'instructor_course_content' course.id %}"
+                        >
+                            Manage
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <p class="empty">
+                No courses are currently available.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         RECENT SUBMISSIONS
+         ===================================================== -->
+
+    <div class="section">
+
+        <h2>Recent Submissions</h2>
+
+        {% if recent_submissions %}
+
+            <table class="submission-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Student</th>
+                        <th>Course</th>
+                        <th>Activity</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for submission in recent_submissions %}
+
+                        <tr>
+
+                            <td>
+                                {{ submission.student.username }}
+                            </td>
+
+                            <td>
+                                {{ submission.activity.lesson.course.title }}
+                            </td>
+
+                            <td>
+                                {{ submission.activity.title }}
+                            </td>
+
+                            <td>
+
+                                {% if submission.score is None %}
+                                    <span class="pending">
+                                        Pending Review
+                                    </span>
+                                {% elif submission.status == "error" %}
+                                    Needs Correction
+                                {% else %}
+                                    Graded
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if submission.score is not None %}
+                                    {{ submission.score }}
+                                {% else %}
+                                    —
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        {% else %}
+
+            <p class="empty">
+                No student submissions have been received yet.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

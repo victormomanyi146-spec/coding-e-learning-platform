@@ -15,162 +15,264 @@
 
 </head>
 
-
 <body>
 
-    <header class="page-header">
+{% include "academy/instructor_nav.html" %}
 
-        <div class="container">
+<header class="page-header">
 
-            <h1>Review Submission</h1>
+    <div class="container">
+
+        <h1>Review Submission</h1>
+
+        <p>
+            Review the student's work and provide a score and feedback.
+        </p>
+
+    </div>
+
+</header>
+
+<main class="container">
+
+    {% if error %}
+        <div class="error-section">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    <div class="page-actions">
+
+        <a href="{% url 'instructor_submissions' %}">
+            Back to Instructor Submissions
+        </a>
+
+    </div>
+
+    <section class="activity-info">
+
+        <h2>Submission Details</h2>
+
+        <p>
+            <strong>Student:</strong>
+            {{ submission.student.username }}
+        </p>
+
+        <p>
+            <strong>Course:</strong>
+            {{ submission.activity.lesson.course.title }}
+        </p>
+
+        <p>
+            <strong>Lesson:</strong>
+            {{ submission.activity.lesson.title }}
+        </p>
+
+        <p>
+            <strong>Activity:</strong>
+            {{ submission.activity.title }}
+        </p>
+
+        <p>
+            <strong>Activity Type:</strong>
+            {{ submission.activity.get_activity_type_display }}
+        </p>
+
+        <p>
+            <strong>Submitted:</strong>
+            {{ submission.submitted_at }}
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            {{ submission.status }}
+        </p>
+
+    </section>
+
+    {% if submission.code %}
+
+        <section class="instructions">
+
+            <h2>Submitted Code</h2>
+
+            <div class="output-box">
+                <pre>{{ submission.code }}</pre>
+            </div>
+
+        </section>
+
+    {% endif %}
+
+    {% if submission.response_text %}
+
+        <section class="instructions">
+
+            <h2>Student Response</h2>
+
+            <div class="output-box">
+                {{ submission.response_text|linebreaks }}
+            </div>
+
+        </section>
+
+    {% endif %}
+
+    {% if submission.github_url %}
+
+        <section class="instructions">
+
+            <h2>GitHub Submission</h2>
 
             <p>
-                Review the student's work and provide a score and feedback.
+                <a
+                    href="{{ submission.github_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Open GitHub Submission
+                </a>
             </p>
 
-        </div>
+        </section>
 
-    </header>
+    {% endif %}
 
+    {% if submission.attachment %}
 
-    <main class="container">
+        <section class="instructions">
 
-        {% if error %}
-            <div class="error-section">
-                <p>{{ error }}</p>
-            </div>
+            <h2>Attachment</h2>
+
+            <p>
+                <a
+                    href="{% url 'submission_attachment' submission.id %}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    View / Download Attachment
+                </a>
+            </p>
+
+        </section>
+
+    {% endif %}
+
+    <section class="editor-section">
+
+        <h2>Instructor Assessment</h2>
+
+        {% if submission.score is not None %}
+
+            <p>
+                <strong>Current Score:</strong>
+                {{ submission.score }} / {{ submission.activity.max_score }}
+            </p>
+
         {% endif %}
 
+        {% if submission.feedback %}
 
-        <div class="page-actions">
-
-            <a href="{% url 'instructor_submissions' %}">
-                ← Back to Student Submissions
-            </a>
-
-        </div>
-
-
-        <section class="submission-card">
-
-            <div class="submission-header">
-
-                <h2>
-                    {{ submission.activity.title }}
-                </h2>
-
-                <span class="submission-status">
-                    {{ submission.status|title }}
-                </span>
-
+            <div class="output-box">
+                <strong>Current Feedback</strong>
+                <br><br>
+                {{ submission.feedback|linebreaks }}
             </div>
 
+        {% endif %}
 
-            <div class="submission-details">
+        <form method="post">
 
-                <p>
-                    <strong>Student:</strong>
-                    {{ submission.student }}
-                </p>
+            {% csrf_token %}
 
-                <p>
-                    <strong>Course:</strong>
-                    {{ submission.activity.lesson.course.title }}
-                </p>
+            <div class="editor-box">
 
-                <p>
-                    <strong>Lesson:</strong>
-                    {{ submission.activity.lesson.title }}
-                </p>
+                <label for="score">
+                    <strong>Score</strong>
+                </label>
 
-                <p>
-                    <strong>Activity:</strong>
-                    {{ submission.activity.get_activity_type_display }}
-                </p>
+                <input
+                    type="number"
+                    id="score"
+                    name="score"
+                    min="0"
+                    max="{{ submission.activity.max_score }}"
+                    value="{% if submission.score is not None %}{{ submission.score }}{% endif %}"
+                    required
+                    class="program-input"
+                >
 
-                <p>
-                    <strong>Maximum Score:</strong>
-                    {{ submission.activity.max_score }}
-                </p>
-
-                <p>
-                    <strong>Submitted:</strong>
-                    {{ submission.submitted_at|date:"M d, Y H:i" }}
+                <p class="input-help">
+                    Maximum score: {{ submission.activity.max_score }}
                 </p>
 
             </div>
 
-        </section>
+            <div class="editor-box">
 
+                <label for="feedback">
+                    <strong>Feedback</strong>
+                </label>
 
-        <section class="submission-card">
+                <textarea
+                    id="feedback"
+                    name="feedback"
+                    class="program-input"
+                    rows="10"
+                    placeholder="Provide constructive feedback to help the student improve..."
+                >{{ submission.feedback }}</textarea>
 
-            <h2>Student's Submitted Code</h2>
+            </div>
 
-            <pre><code>{{ submission.code }}</code></pre>
+            <div class="editor-box">
 
-        </section>
+                <label for="status">
+                    <strong>Assessment Status</strong>
+                </label>
 
-
-        <section class="submission-card">
-
-            <h2>Grade Submission</h2>
-
-            <form method="POST">
-
-                {% csrf_token %}
-
-
-                <div>
-
-                    <label for="score">
-                        <strong>Score</strong>
-                    </label>
-
-                    <input
-                        type="number"
-                        id="score"
-                        name="score"
-                        min="0"
-                        max="{{ submission.activity.max_score }}"
-                        value="{{ submission.score|default_if_none:'' }}"
-                        required
+                <select
+                    id="status"
+                    name="status"
+                    class="program-input"
+                >
+                    <option
+                        value="graded"
+                        {% if submission.status != "correction" %}selected{% endif %}
                     >
+                        Graded
+                    </option>
 
-                    <p>
-                        Maximum score:
-                        {{ submission.activity.max_score }}
-                    </p>
+                    <option
+                        value="correction"
+                        {% if submission.status == "correction" %}selected{% endif %}
+                    >
+                        Needs Correction
+                    </option>
+                </select>
 
-                </div>
+                <p class="input-help">
+                    Select "Needs Correction" when the student must fix
+                    the work and resubmit it.
+                </p>
 
+            </div>
 
-                <div>
+            <div class="button-row">
 
-                    <label for="feedback">
-                        <strong>Instructor Feedback</strong>
-                    </label>
-
-                    <textarea
-                        id="feedback"
-                        name="feedback"
-                        rows="8"
-                        placeholder="Enter feedback for the student..."
-                    >{{ submission.feedback }}</textarea>
-
-                </div>
-
-
-                <button type="submit">
-                    Save Grade and Feedback
+                <button
+                    type="submit"
+                    class="submit-button"
+                >
+                    Save Assessment
                 </button>
 
-            </form>
+            </div>
 
-        </section>
+        </form>
 
-    </main>
+    </section>
+
+</main>
 
 </body>
-
 </html>

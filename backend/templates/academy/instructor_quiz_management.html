@@ -1,0 +1,187 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Instructor Quiz Management | Coding Academy</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+</head>
+
+<body>
+{% include "academy/instructor_nav.html" %}
+
+
+<header>
+    <nav class="navbar">
+
+        <a
+            class="logo"
+            href="{% url 'home' %}"
+        >
+            Coding Academy
+        </a>
+
+        <a href="{% url 'course_list' %}">
+            Courses
+        </a>
+
+        <a href="{% url 'instructor_submissions' %}">
+            Submissions
+        </a>
+
+        <a href="{% url 'instructor_quizzes' %}">
+            Quiz Management
+        </a>
+
+        <a href="{% url 'my_courses' %}">
+            My Courses
+        </a>
+
+        <form
+            method="post"
+            action="{% url 'logout' %}"
+            class="nav-logout-form"
+        >
+            {% csrf_token %}
+
+            <button
+                type="submit"
+                class="nav-logout"
+            >
+                Logout
+            </button>
+        </form>
+
+        {% if user.is_staff %}
+            <a href="/admin/">
+                Admin
+            </a>
+        {% endif %}
+
+    </nav>
+</header>
+
+<main class="progress-dashboard">
+
+    <section class="progress-header">
+
+        <h1>
+            Instructor Quiz Management
+        </h1>
+
+        <p class="progress-subtitle">
+            Manage quiz settings, questions, choices,
+            correct answers, and scoring.
+        </p>
+
+    </section>
+
+    {% if quiz_data %}
+
+        <section class="dashboard-section">
+
+            <div class="assessment-list">
+
+                {% for item in quiz_data %}
+
+                    <article class="assessment-card">
+
+                        <div class="assessment-main">
+
+                            <h2>
+                                {{ item.quiz.activity.title }}
+                            </h2>
+
+                            <p>
+                                <strong>Course:</strong>
+                                {{ item.course.title }}
+                            </p>
+
+                            <p>
+                                <strong>Lesson:</strong>
+                                {{ item.lesson.title }}
+                            </p>
+
+                            <p>
+                                <strong>Questions:</strong>
+                                {{ item.question_count }}
+                            </p>
+
+                            <p>
+                                <strong>Total points:</strong>
+                                {{ item.total_points }}
+                            </p>
+
+                        </div>
+
+                        <div class="assessment-result">
+
+                            <p>
+                                Passing score:
+                                <strong>
+                                    {{ item.quiz.passing_score }}%
+                                </strong>
+                            </p>
+
+                            <div class="page-actions">
+
+                                <a
+                                    href="{% url 'instructor_quiz_edit' item.quiz.id %}"
+                                >
+                                    Manage Quiz
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        </section>
+
+    {% else %}
+
+        <section class="dashboard-section">
+
+            <div class="empty-dashboard-message">
+
+                <h3>
+                    No quizzes available
+                </h3>
+
+                <p>
+                    Create a quiz activity before managing questions.
+                </p>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+<footer>
+    <p>
+        &copy; 2026 Coding Academy. All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>
+

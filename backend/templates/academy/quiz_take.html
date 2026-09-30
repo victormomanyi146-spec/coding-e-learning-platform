@@ -1,0 +1,275 @@
+﻿{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>{{ activity.title }} - Quiz</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+</head>
+
+<body>
+
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
+
+<main class="course-container">
+
+    <section class="submission-card">
+
+        <div class="section-heading">
+
+            <h1>
+                {{ activity.title }}
+            </h1>
+
+            <p>
+                {{ activity.instructions }}
+            </p>
+
+            <p>
+                Passing score:
+                <strong>
+                    {{ quiz.passing_score }}%
+                </strong>
+            </p>
+
+        </div>
+
+    </section>
+
+
+    {% if result %}
+
+        <section class="submission-card">
+
+            <div class="section-heading">
+
+                <h2>
+                    Quiz Result
+                </h2>
+
+            </div>
+
+            <p>
+                Score:
+                <strong>
+                    {{ result.earned_points }}
+                    /
+                    {{ result.total_points }}
+                </strong>
+            </p>
+
+            <p>
+                Percentage:
+                <strong>
+                    {{ result.percentage }}%
+                </strong>
+            </p>
+
+
+            {% if result.passed %}
+
+                <div class="completion-success">
+
+                    <div>
+
+                        <h3>
+                            Quiz Passed
+                        </h3>
+
+                        <p>
+                            Your quiz activity has been
+                            completed successfully.
+                        </p>
+
+                        <p>
+                            You may retake the quiz to improve
+                            your score. Previous attempts remain
+                            in your quiz history.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="completion-pending">
+
+                    <h3>
+                        Quiz Not Passed
+                    </h3>
+
+                    <p>
+                        You need at least
+                        {{ result.passing_score }}%
+                        to pass this quiz.
+                    </p>
+
+                    <p>
+                        Review your result, then retake the quiz
+                        to improve your score.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+            <div class="page-actions">
+
+                {% if attempt %}
+
+                    <a
+                        href="{% url 'quiz_attempt_review' course.slug attempt.id %}"
+                    >
+                        Review Attempt
+                    </a>
+
+                {% endif %}
+
+                <a href="#quiz-form">
+                    Retake Quiz
+                </a>
+
+                <a
+                    href="{% url 'quiz_history' course.slug %}"
+                >
+                    View Quiz History
+                </a>
+
+                <a
+                    href="{% url 'course_progress' course.slug %}"
+                >
+                    View Course Progress
+                </a>
+
+                <a
+                    href="{% url 'lesson_detail' course.slug lesson.id %}"
+                >
+                    Return to Lesson
+                </a>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+
+    {% if questions %}
+
+        <form
+            id="quiz-form"
+            method="POST"
+            class="quiz-form"
+        >
+
+            {% csrf_token %}
+
+            {% for question in questions %}
+
+                <section class="submission-card">
+
+                    <div class="section-heading">
+
+                        <h2>
+                            Question {{ forloop.counter }}
+                        </h2>
+
+                        <p>
+                            {{ question.question_text }}
+                        </p>
+
+                        <small>
+                            {{ question.points }}
+                            point{{ question.points|pluralize }}
+                        </small>
+
+                    </div>
+
+
+                    <div class="quiz-choices">
+
+                        {% for choice in question.choices.all %}
+
+                            <label>
+
+                                <input
+                                    type="radio"
+                                    name="question_{{ question.id }}"
+                                    value="{{ choice.id }}"
+                                    required
+                                >
+
+                                {{ choice.choice_text }}
+
+                            </label>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+            {% endfor %}
+
+
+            <section class="submission-card">
+
+                <button
+                    type="submit"
+                    class="editor-button"
+                >
+                    Submit Quiz
+                </button>
+
+            </section>
+
+        </form>
+
+    {% else %}
+
+        <section class="submission-card">
+
+            <h2>
+                Quiz Not Available
+            </h2>
+
+            <p>
+                This quiz does not contain any active questions yet.
+            </p>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+
+<footer>
+
+    <p>
+        &copy; 2026 Coding E-Learning Platform
+    </p>
+
+</footer>
+
+</body>
+
+</html>
+

@@ -1423,3 +1423,159 @@ textarea:focus-visible {
 .nav-logout:hover {
     color: #93c5fd;
 }
+
+/* =========================================
+   MY COURSES ? COURSE PROGRESS
+========================================= */
+
+.course-card .course-progress {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 18px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.course-card .course-progress h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.05rem;
+}
+
+.course-card .course-progress .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 10px 0 12px;
+}
+
+.course-card .course-progress .progress-fill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.course-card .course-progress p {
+    margin: 8px 0;
+}
+
+.course-card .course-progress strong {
+    font-weight: 600;
+}
+
+
+/* =========================================
+SHARED SITE NAVIGATION
+========================================= */
+
+.site-header {
+    background: #111827;
+    padding: 14px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.site-navbar {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.site-brand {
+    display: flex;
+    align-items: center;
+}
+
+.site-navbar .logo {
+    color: white;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0;
+}
+
+.site-nav-links {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.site-navbar .site-nav-links > a {
+    color: white;
+    font-weight: 600;
+    margin: 0;
+    padding: 7px 10px;
+    border-radius: 6px;
+}
+
+.site-navbar .site-nav-links > a:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.10);
+    text-decoration: none;
+}
+
+.site-nav-user {
+    color: #d1d5db;
+    padding: 7px 10px;
+    font-size: 14px;
+}
+
+.site-navbar .nav-logout-form {
+    display: inline;
+    margin: 0;
+}
+
+.site-navbar .nav-logout {
+    background: transparent;
+    color: white;
+    border: 0;
+    padding: 7px 10px;
+    margin: 0;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.site-navbar .nav-logout:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.10);
+}
+
+.instructor-nav {
+    margin-bottom: 24px;
+}
+
+.instructor-nav .logo {
+    font-size: 18px;
+}
+
+@media (max-width: 760px) {
+
+    .site-header {
+        padding: 12px 14px;
+    }
+
+    .site-navbar {
+        align-items: flex-start;
+    }
+
+    .site-nav-links {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .site-nav-user {
+        width: 100%;
+        padding-left: 10px;
+    }
+
+}

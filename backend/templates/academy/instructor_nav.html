@@ -1,0 +1,57 @@
+﻿<nav class="navbar site-navbar instructor-nav">
+
+    <div class="site-brand">
+        <a
+            class="logo"
+            href="{% url 'instructor_dashboard' %}"
+        >
+            Instructor Portal
+        </a>
+    </div>
+
+    <div class="site-nav-links">
+
+        <a href="{% url 'instructor_dashboard' %}">
+            Dashboard
+        </a>
+
+        <a href="{% url 'instructor_content_management' %}">
+            Course Content
+        </a>
+
+        <a href="{% url 'instructor_quizzes' %}">
+            Quizzes
+        </a>
+
+        <a href="{% url 'instructor_submissions' %}">
+            Submissions
+        </a>
+
+        <a href="{% url 'course_list' %}">
+            View Courses
+        </a>
+
+        {% if user.is_staff %}
+            <a href="/admin/">
+                Admin
+            </a>
+        {% endif %}
+
+        <form
+            method="post"
+            action="{% url 'logout' %}"
+            class="nav-logout-form"
+        >
+            {% csrf_token %}
+
+            <button
+                type="submit"
+                class="nav-logout"
+            >
+                Logout
+            </button>
+        </form>
+
+    </div>
+
+</nav>

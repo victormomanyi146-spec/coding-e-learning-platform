@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 import os
 from pathlib import Path
 
@@ -6,12 +7,18 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "dev-only-secret-key-change-before-deployment",
-)
-
 DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+
+if not SECRET_KEY:
+
+    if DEBUG:
+        SECRET_KEY = "dev-only-secret-key-change-before-deployment"
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=False."
+        )
 
 allowed_hosts_env = os.environ.get("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [
@@ -65,6 +72,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "academy.context_processors.notifications",
             ],
         },
     },
@@ -163,3 +171,22 @@ if not DEBUG:
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/courses/"
 LOGOUT_REDIRECT_URL = "/courses/"
+
+# ============================================================
+# USER UPLOADS
+# ============================================================
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+# TEST_STATICFILES_STORAGE_FIX
+# Use normal static files and in-memory media while running Django tests.
+import sys as _sys
+
+if "test" in _sys.argv and "STORAGES" in globals():
+    STORAGES["staticfiles"] = {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+
+    STORAGES["default"] = {
+        "BACKEND": "django.core.files.storage.InMemoryStorage",
+    }
