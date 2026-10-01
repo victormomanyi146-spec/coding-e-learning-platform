@@ -760,18 +760,41 @@ def activity_detail(
                 error = "Please enter Python code before submitting."
 
             elif len(code) > 10000:
-                error = "Code is too long. Please keep submissions under 10,000 characters."
+                error = (
+                    "Code is too long. Please keep submissions under "
+                    "10,000 characters."
+                )
 
             elif len(program_input) > 5000:
-                error = "Program input is too long. Please keep it under 5,000 characters."
+                error = (
+                    "Program input is too long. Please keep it under "
+                    "5,000 characters."
+                )
 
             elif not settings.DEBUG:
 
-                error = (
-                    "The online code runner is currently unavailable "
-                    "in production. Code execution is disabled for "
-                    "security reasons."
-                )
+                if submit_activity:
+
+                    Submission.objects.create(
+                        student=request.user,
+                        activity=activity,
+                        code=code,
+                        status="submitted",
+                    )
+
+                    output = (
+                        "Code submitted successfully for instructor "
+                        "assessment. Code execution is disabled in "
+                        "production."
+                    )
+
+                else:
+
+                    error = (
+                        "The online code runner is unavailable in "
+                        "production. You can still submit your code "
+                        "for instructor assessment."
+                    )
 
             else:
 
@@ -3845,22 +3868,3 @@ def _module_progress(student, module):
         "total_lessons": total_lessons,
         "completed_lessons": completed_lessons,
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

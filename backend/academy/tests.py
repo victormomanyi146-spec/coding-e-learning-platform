@@ -2848,6 +2848,68 @@ class AssignmentLabSubmissionTests(TestCase):
         )
 
 
+    @override_settings(DEBUG=False)
+    def test_production_coding_submission_creates_pending_submission(self):
+
+        coding = Activity.objects.create(
+            lesson=self.lesson,
+            title="Production Coding Submission Test",
+            activity_type="coding",
+            instructions="Submit Python code for instructor review.",
+            order=2,
+            max_score=20,
+            is_required=True,
+        )
+
+        self.client.force_login(self.student)
+
+        url = reverse(
+            "activity_detail",
+            kwargs={
+                "course_slug": self.course.slug,
+                "lesson_id": self.lesson.id,
+                "activity_id": coding.id,
+            },
+        )
+
+        response = self.client.post(
+            url,
+            {
+                "submit_activity": "1",
+                "code": 'print("Production submission")',
+                "program_input": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        submission = Submission.objects.get(
+            student=self.student,
+            activity=coding,
+        )
+
+        self.assertEqual(
+            submission.code,
+            'print("Production submission")',
+        )
+
+        self.assertEqual(
+            submission.status,
+            "submitted",
+        )
+
+        self.assertFalse(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=coding,
+            ).exists()
+        )
+
+        self.assertContains(
+            response,
+            "Code submitted successfully for instructor assessment.",
+        )
+
     def test_assignment_submission_creates_pending_submission(self):
 
         assignment = Activity.objects.create(
