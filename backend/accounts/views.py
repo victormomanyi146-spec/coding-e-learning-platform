@@ -6,7 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .forms import StudentRegistrationForm
-from .serializers import StudentLoginSerializer
+from .serializers import (
+    InstructorLoginSerializer,
+    StudentLoginSerializer,
+)
 
 
 def register(request):
@@ -51,6 +54,34 @@ class StudentLoginAPIView(APIView):
                     "username": user.username,
                     "email": user.email,
                     "role": user.role,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class InstructorLoginAPIView(APIView):
+    """Issue a DRF token for valid instructor credentials."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        serializer = InstructorLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "token": token.key,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "role": user.role,
+                    "is_staff": user.is_staff,
                 },
             },
             status=status.HTTP_200_OK,
