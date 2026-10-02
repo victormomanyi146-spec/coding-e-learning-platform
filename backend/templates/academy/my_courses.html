@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Courses | Coding Academy</title>
+    <title>My Learning Dashboard | Coding Academy</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
@@ -13,67 +13,244 @@
     {% include "academy/site_nav.html" %}
 </header>
 
-<main class="container">
-    <h1>My Courses</h1>
-    <p>Courses you are currently enrolled in.</p>
+<main class="container dashboard-page">
 
-    {% if enrollments %}
-        <div class="course-container">
-            {% for enrollment in enrollments %}
-                <article class="course-card">
-                    <h2>{{ enrollment.course.title }}</h2>
-                    <p>{{ enrollment.course.description }}</p>
-                    <p><strong>Level:</strong> {{ enrollment.course.level }}</p>
-                    <p><strong>Duration:</strong> {{ enrollment.course.duration }}</p>
-                    <p><strong>Enrolled:</strong> {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
-                    <div class="course-progress">
-                        <h3>Course Progress</h3>
+    <section class="dashboard-header">
+        <p class="dashboard-eyebrow">Student Dashboard</p>
+        <h1>My Learning Dashboard</h1>
+        <p>
+            Welcome back, <strong>{{ user.username }}</strong>.
+            Continue learning, review your assessments, and track your progress.
+        </p>
+    </section>
 
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {{ enrollment.progress.activity_percentage }}%;"></div>
+    <section class="dashboard-summary">
+        <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Enrolled Courses</span>
+            <strong>{{ enrollments|length }}</strong>
+        </div>
+
+        <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Recent Assessments</span>
+            <strong>{{ recent_submissions|length }}</strong>
+        </div>
+
+        <div class="dashboard-stat">
+            <span class="dashboard-stat-label">Unread Notifications</span>
+            <strong>{{ dashboard_unread_notification_count }}</strong>
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="dashboard-section-header">
+            <div>
+                <h2>My Courses</h2>
+                <p>Continue your enrolled courses and monitor your progress.</p>
+            </div>
+
+            <a href="{% url 'course_list' %}" class="btn">
+                Browse Courses
+            </a>
+        </div>
+
+        {% if enrollments %}
+            <div class="course-container">
+                {% for enrollment in enrollments %}
+                    <article class="course-card">
+                        <h3>{{ enrollment.course.title }}</h3>
+
+                        <p>{{ enrollment.course.description|truncatechars:180 }}</p>
+
+                        <p>
+                            <strong>Level:</strong>
+                            {{ enrollment.course.level }}
+                        </p>
+
+                        <p>
+                            <strong>Duration:</strong>
+                            {{ enrollment.course.duration }}
+                        </p>
+
+                        <div class="course-progress">
+                            <h4>Course Progress</h4>
+
+                            <div class="progress-bar">
+                                <div
+                                    class="progress-fill"
+                                    style="width: {{ enrollment.progress.activity_percentage }}%;"
+                                ></div>
+                            </div>
+
+                            <p>
+                                <strong>
+                                    {{ enrollment.progress.activity_percentage }}%
+                                </strong>
+                                activities completed
+                            </p>
+
+                            <div class="dashboard-course-metrics">
+                                <span>
+                                    Lessons:
+                                    <strong>
+                                        {{ enrollment.progress.lessons_completed }}/{{ enrollment.progress.lessons_total }}
+                                    </strong>
+                                </span>
+
+                                <span>
+                                    Activities:
+                                    <strong>
+                                        {{ enrollment.progress.activities_completed }}/{{ enrollment.progress.activities_total }}
+                                    </strong>
+                                </span>
+                            </div>
+
+                            {% if enrollment.progress.average_score is not None %}
+                                <p>
+                                    <strong>Average Score:</strong>
+                                    {{ enrollment.progress.average_score }}%
+                                </p>
+                            {% else %}
+                                <p>
+                                    <strong>Average Score:</strong>
+                                    Not graded
+                                </p>
+                            {% endif %}
                         </div>
 
-                        <p>
-                            <strong>{{ enrollment.progress.activity_percentage }}%</strong>
-                            activities completed
-                        </p>
+                        <a
+                            href="{% url 'course_detail' enrollment.course.slug %}"
+                            class="btn"
+                        >
+                            Continue Learning
+                        </a>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No courses yet</h3>
+                <p>You are not enrolled in any courses yet.</p>
 
-                        <p>
-                            <strong>Lessons:</strong>
-                            {{ enrollment.progress.lessons_completed }}/{{ enrollment.progress.lessons_total }}
-                        </p>
+                <a href="{% url 'course_list' %}" class="btn">
+                    Browse Courses
+                </a>
+            </div>
+        {% endif %}
+    </section>
 
-                        <p>
-                            <strong>Activities:</strong>
-                            {{ enrollment.progress.activities_completed }}/{{ enrollment.progress.activities_total }}
-                        </p>
+    <section class="dashboard-grid">
 
-                        {% if enrollment.progress.average_score is not None %}
-                            <p>
-                                <strong>Average Score:</strong>
-                                {{ enrollment.progress.average_score }}%
-                            </p>
-                        {% else %}
-                            <p>
-                                <strong>Average Score:</strong>
-                                Not graded
-                            </p>
-                        {% endif %}
-                    </div>
+        <article class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2>Recent Assessments</h2>
+                    <p>Your latest activity submissions and assessment results.</p>
+                </div>
+            </div>
 
-                    <a href="{% url 'course_detail' enrollment.course.slug %}" class="btn">
-                        Continue Learning
-                    </a>
-                </article>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="empty-state">
-            <h2>No courses yet</h2>
-            <p>You are not enrolled in any courses yet.</p>
-            <a href="{% url 'course_list' %}" class="btn">Browse Courses</a>
-        </div>
-    {% endif %}
+            {% if recent_submissions %}
+                <div class="dashboard-list">
+                    {% for submission in recent_submissions %}
+                        <div class="dashboard-list-item">
+                            <div>
+                                <strong>
+                                    {{ submission.activity.title }}
+                                </strong>
+
+                                <span>
+                                    {{ submission.activity.lesson.course.title }}
+                                </span>
+
+                                <small>
+                                    {{ submission.submitted_at|date:"M d, Y H:i" }}
+                                </small>
+                            </div>
+
+                            <div class="dashboard-status">
+                                {% if submission.score is not None %}
+                                    <strong>
+                                        {{ submission.score }}/{{ submission.activity.max_score }}
+                                    </strong>
+
+                                    {% if submission.status == "graded" %}
+                                        <span class="status-badge status-graded">
+                                            Graded
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge">
+                                            Scored
+                                        </span>
+                                    {% endif %}
+                                {% elif submission.status == "error" %}
+                                    <span class="status-badge status-error">
+                                        Error
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-pending">
+                                        Pending
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="dashboard-empty">
+                    <p>No submissions yet.</p>
+                    <a href="{% url 'course_list' %}">Start learning</a>
+                </div>
+            {% endif %}
+        </article>
+
+        <article class="dashboard-panel">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h2>Notifications</h2>
+                    <p>
+                        {{ dashboard_unread_notification_count }}
+                        unread notification{{ dashboard_unread_notification_count|pluralize }}.
+                    </p>
+                </div>
+
+                <a href="{% url 'notification_list' %}" class="dashboard-panel-link">
+                    View all
+                </a>
+            </div>
+
+            {% if recent_notifications %}
+                <div class="dashboard-list">
+                    {% for notification in recent_notifications %}
+                        <a
+                            href="{% url 'notification_read' notification.id %}"
+                            class="dashboard-notification {% if not notification.is_read %}unread{% endif %}"
+                        >
+                            <div>
+                                <strong>{{ notification.title }}</strong>
+
+                                <span>
+                                    {{ notification.message|truncatechars:120 }}
+                                </span>
+
+                                <small>
+                                    {{ notification.created_at|date:"M d, Y H:i" }}
+                                </small>
+                            </div>
+
+                            {% if not notification.is_read %}
+                                <span class="notification-dot" aria-label="Unread"></span>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="dashboard-empty">
+                    <p>No notifications yet.</p>
+                </div>
+            {% endif %}
+        </article>
+
+    </section>
+
 </main>
 
 <footer>

@@ -1189,6 +1189,110 @@ class AcademyFlowTests(TestCase):
             self.course.title,
         )
 
+    def test_my_courses_dashboard_displays_recent_assessment_and_notification(self):
+        self.enroll_student()
+
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Hello")',
+            status="graded",
+            score=18,
+            feedback="Good work.",
+        )
+
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="graded",
+            title="Submission Graded",
+            message="Your Python submission has been graded.",
+            link_url="/courses/python-programming/",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("my_courses")
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(
+            response,
+            "My Learning Dashboard",
+        )
+
+        self.assertContains(
+            response,
+            self.activity.title,
+        )
+
+        self.assertContains(
+            response,
+            "Submission Graded",
+        )
+
+        self.assertEqual(
+            list(response.context["recent_submissions"]),
+            [submission],
+        )
+
+        self.assertEqual(
+            list(response.context["recent_notifications"])[0].recipient_id,
+            self.student.id,
+        )
+
+        self.assertEqual(
+            response.context["dashboard_unread_notification_count"],
+            1,
+        )
+
+    def test_my_courses_dashboard_excludes_other_users_data(self):
+        self.enroll_student()
+
+        other_student = User.objects.create_user(
+            username="other_dashboard_student",
+            password="StrongPass123!",
+            role=User.Roles.STUDENT,
+        )
+
+        other_submission = Submission.objects.create(
+            student=other_student,
+            activity=self.activity,
+            code='print("Other student")',
+            status="graded",
+            score=10,
+        )
+
+        Notification.objects.create(
+            recipient=other_student,
+            notification_type="graded",
+            title="Other Student Notification",
+            message="This notification belongs to another student.",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("my_courses")
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertNotContains(
+            response,
+            "Other Student Notification",
+        )
+
+        self.assertNotIn(
+            other_submission.id,
+            [
+                submission.id
+                for submission in response.context["recent_submissions"]
+            ],
+        )
+
+
     def create_quiz(self):
 
         quiz = Quiz.objects.create(

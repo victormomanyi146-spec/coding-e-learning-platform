@@ -412,7 +412,11 @@ def enroll_course(request, slug):
 @login_required
 def my_courses(request):
     """
-    Display courses the authenticated student is enrolled in.
+    Display the authenticated student's learning dashboard.
+
+    The dashboard combines enrolled courses, recent submissions,
+    and recent notifications while keeping all data scoped to the
+    currently authenticated user.
     """
 
     enrollments = (
@@ -428,11 +432,36 @@ def my_courses(request):
             enrollment.course,
         )
 
+    recent_submissions = list(
+        Submission.objects
+        .filter(student=request.user)
+        .select_related(
+            "activity",
+            "activity__lesson",
+            "activity__lesson__course",
+        )
+        .order_by("-submitted_at")[:5]
+    )
+
+    recent_notifications = list(
+        Notification.objects
+        .filter(recipient=request.user)
+        .order_by("-created_at")[:5]
+    )
+
+    unread_notification_count = Notification.objects.filter(
+        recipient=request.user,
+        is_read=False,
+    ).count()
+
     return render(
         request,
         "academy/my_courses.html",
         {
             "enrollments": enrollments,
+            "recent_submissions": recent_submissions,
+            "recent_notifications": recent_notifications,
+            "dashboard_unread_notification_count": unread_notification_count,
         },
     )
 

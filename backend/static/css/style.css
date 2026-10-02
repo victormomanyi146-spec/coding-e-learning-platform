@@ -1579,3 +1579,229 @@ SHARED SITE NAVIGATION
     }
 
 }
+
+/* =========================================
+   STUDENT DASHBOARD
+   ========================================= */
+
+.dashboard-page {
+    padding-bottom: 40px;
+}
+
+.dashboard-header {
+    margin-bottom: 24px;
+}
+
+.dashboard-eyebrow {
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+}
+
+.dashboard-header h1 {
+    margin: 0 0 10px;
+}
+
+.dashboard-header p {
+    margin: 0;
+    max-width: 760px;
+    color: #475569;
+}
+
+.dashboard-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.dashboard-stat {
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.dashboard-stat-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.dashboard-stat strong {
+    font-size: 1.65rem;
+}
+
+.dashboard-section {
+    margin-bottom: 30px;
+}
+
+.dashboard-section-header,
+.dashboard-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.dashboard-section-header h2,
+.dashboard-panel-header h2 {
+    margin: 0 0 6px;
+}
+
+.dashboard-section-header p,
+.dashboard-panel-header p {
+    margin: 0;
+    color: #64748b;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.dashboard-panel {
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.dashboard-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-list-item,
+.dashboard-notification {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.dashboard-list-item:last-child,
+.dashboard-notification:last-child {
+    border-bottom: 0;
+}
+
+.dashboard-list-item > div:first-child,
+.dashboard-notification > div {
+    min-width: 0;
+}
+
+.dashboard-list-item strong,
+.dashboard-list-item span,
+.dashboard-list-item small,
+.dashboard-notification strong,
+.dashboard-notification span,
+.dashboard-notification small {
+    display: block;
+}
+
+.dashboard-list-item span,
+.dashboard-notification span {
+    margin-top: 4px;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.dashboard-list-item small,
+.dashboard-notification small {
+    margin-top: 5px;
+    color: #94a3b8;
+}
+
+.dashboard-status {
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+.status-badge {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-graded {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.dashboard-notification {
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+}
+
+.dashboard-notification.unread {
+    padding-left: 12px;
+    background: #eff6ff;
+}
+
+.dashboard-panel-link {
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.notification-dot {
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+.dashboard-empty {
+    padding: 20px 0 4px;
+    color: #64748b;
+}
+
+.dashboard-empty p {
+    margin: 0 0 8px;
+}
+
+.dashboard-course-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 10px 0;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 800px) {
+    .dashboard-summary,
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-section-header,
+    .dashboard-panel-header {
+        flex-direction: column;
+    }
+}
