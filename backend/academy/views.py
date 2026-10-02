@@ -3776,13 +3776,36 @@ def _course_progress(student, course):
         .order_by("-submitted_at", "-id")
     )
 
-    submission_percentages = [
-        (
-            (submission.score / submission.activity.max_score) * 100
+    # Keep submission history intact, but count only the best
+    # graded submission for each activity in the course average.
+    # This mirrors the existing best-attempt rule used for quizzes.
+    best_submission_percentages = {}
+
+    for submission in graded_submissions:
+        max_score = submission.activity.max_score or 0
+
+        if max_score <= 0:
+            continue
+
+        percentage = (
+            (submission.score / max_score) * 100
         )
-        for submission in graded_submissions
-        if submission.activity.max_score
-    ]
+
+        current_best = best_submission_percentages.get(
+            submission.activity_id
+        )
+
+        if (
+            current_best is None
+            or percentage > current_best
+        ):
+            best_submission_percentages[
+                submission.activity_id
+            ] = percentage
+
+    submission_percentages = list(
+        best_submission_percentages.values()
+    )
 
     # --------------------------------------------------------
     # Quiz attempts

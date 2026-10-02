@@ -2207,6 +2207,60 @@ class AcademyFlowTests(TestCase):
             "Review Attempt",
         )
 
+    def test_course_average_uses_best_submission_per_activity(self):
+        self.enroll_student()
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("First attempt")',
+            status="graded",
+            score=18,
+            feedback="Good work.",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Second attempt")',
+            status="graded",
+            score=10,
+            feedback="Needs improvement.",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse(
+                "course_progress",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        progress = response.context["progress"]
+
+        # 18/20 = 90%; the lower second submission must not
+        # be counted as a separate assessment in the average.
+        self.assertEqual(
+            progress["average_score"],
+            90.0,
+        )
+
+        # Both submissions remain in history.
+        self.assertEqual(
+            Submission.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).count(),
+            2,
+        )
+
+
     def test_course_average_uses_best_quiz_attempt(self):
         self.enroll_student()
 

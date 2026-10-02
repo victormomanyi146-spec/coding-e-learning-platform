@@ -1,4 +1,4 @@
-from django.core.exceptions import ImproperlyConfigured
+﻿from django.core.exceptions import ImproperlyConfigured
 import os
 from pathlib import Path
 
@@ -190,84 +190,4 @@ if "test" in _sys.argv and "STORAGES" in globals():
     STORAGES["default"] = {
         "BACKEND": "django.core.files.storage.InMemoryStorage",
     }
-
-
-# ============================================================
-# DEPLOYMENT SECURITY
-# Local development remains HTTP; production uses HTTPS.
-# ============================================================
-from django.core.exceptions import ImproperlyConfigured
-import os
-
-DEBUG = os.environ.get(
-    "DJANGO_DEBUG",
-    "False" if os.environ.get("RENDER") else "True",
-).strip().lower() in {"1", "true", "yes", "on"}
-
-if DEBUG:
-    SECRET_KEY = os.environ.get(
-        "DJANGO_SECRET_KEY",
-        "dev-only-local-secret-key-change-in-production",
-    )
-else:
-    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-    if not SECRET_KEY:
-        raise ImproperlyConfigured(
-            "DJANGO_SECRET_KEY must be set when DEBUG=False."
-        )
-
-if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = True
-
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-else:
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-    SECURE_HSTS_SECONDS = 0
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-    SECURE_HSTS_PRELOAD = False
-
-
-# ============================================================
-# HOST / CSRF VALIDATION
-# ============================================================
-_default_allowed_hosts = [
-    "127.0.0.1",
-    "localhost",
-    "coding-e-learning-platform.onrender.com",
-]
-
-_render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-if _render_hostname:
-    _default_allowed_hosts.append(_render_hostname)
-
-_env_allowed_hosts = os.environ.get("DJANGO_ALLOWED_HOSTS")
-
-if _env_allowed_hosts:
-    ALLOWED_HOSTS = [
-        host.strip()
-        for host in _env_allowed_hosts.split(",")
-        if host.strip()
-    ]
-else:
-    ALLOWED_HOSTS = _default_allowed_hosts
-
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = [
-        "https://coding-e-learning-platform.onrender.com",
-    ]
-
-    if _render_hostname:
-        CSRF_TRUSTED_ORIGINS.append(
-            f"https://{_render_hostname}"
-        )
-else:
-    CSRF_TRUSTED_ORIGINS = []
 
