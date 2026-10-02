@@ -7,180 +7,236 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>My Submissions | Coding E-Learning Platform</title>
+    <title>Submission History | Coding E-Learning Platform</title>
 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 
 <body>
 
-    <header class="site-header">
+<header class="site-header">
     {% include "academy/site_nav.html" %}
 </header>
 
+<main class="container submission-history-page">
 
-    <main class="container">
+    <div class="page-actions">
+        <a href="{% url 'activity_detail' course.slug lesson.id activity.id %}">
+            &larr; Back to Activity
+        </a>
+    </div>
 
-        <div class="page-actions">
+    <section class="submission-history-header">
+        <p class="submission-history-eyebrow">
+            {{ activity.get_activity_type_display }}
+        </p>
 
-            <a href="{% url 'course_list' %}">
-                &larr; Back to Courses
-            </a>
+        <h1>Submission History</h1>
 
+        <p>
+            Review your previous attempts for
+            <strong>{{ activity.title }}</strong>.
+        </p>
+
+        <div class="submission-history-meta">
+            <span>
+                <strong>Course:</strong>
+                {{ course.title }}
+            </span>
+
+            <span>
+                <strong>Lesson:</strong>
+                {{ lesson.title }}
+            </span>
+
+            <span>
+                <strong>Maximum Score:</strong>
+                {{ activity.max_score }}
+            </span>
         </div>
 
+        <a
+            href="{% url 'activity_detail' course.slug lesson.id activity.id %}"
+            class="btn"
+        >
+            Try Activity Again
+        </a>
+    </section>
 
-        {% if submissions %}
+    {% if submissions %}
 
-            <div class="submission-list">
+        <section class="submission-list">
 
-                {% for submission in submissions %}
+            {% for submission in submissions %}
 
-                    <div class="submission-card">
+                <article class="submission-card">
 
-                        <div class="submission-header">
+                    <div class="submission-header">
+
+                        <div>
+                            <p class="submission-attempt">
+                                Attempt {{ forloop.counter }}
+                            </p>
 
                             <h2>
                                 {{ submission.activity.title }}
                             </h2>
-
-                            <span class="submission-status">
-                                {{ submission.status|title }}
-                            </span>
-
                         </div>
 
-
-                        <div class="submission-details">
-
-                            <p>
-                                <strong>Lesson:</strong>
-                                {{ submission.activity.lesson.title }}
-                            </p>
-
-                            <p>
-                                <strong>Course:</strong>
-                                {{ submission.activity.lesson.course.title }}
-                            </p>
-
-                            <p>
-                                <strong>Activity Type:</strong>
-                                {{ submission.activity.get_activity_type_display }}
-                            </p>
-
-                            <p>
-                                <strong>Submitted:</strong>
-                                {{ submission.submitted_at|date:"M d, Y H:i" }}
-                            </p>
-
-                            <p>
-                                <strong>Score:</strong>
-
-                                {% if submission.score is not None %}
-
-                                    {{ submission.score }}
-                                    /
-                                    {{ submission.activity.max_score }}
-
-                                {% else %}
-
-                                    Not graded
-
-                                {% endif %}
-
-                            </p>
-
-                        </div>
-
-
-                        {% if submission.response_text %}
-                            <div class="submission-feedback">
-                                <h3>Submitted Response</h3>
-                                <p>{{ submission.response_text }}</p>
-                            </div>
-                        {% endif %}
-
-
-                        {% if submission.github_url %}
-                            <div class="submission-feedback">
-                                <h3>GitHub Submission</h3>
-                                <p>
-                                    <a
-                                        href="{{ submission.github_url }}"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Open GitHub Submission
-                                    </a>
-                                </p>
-                            </div>
-                        {% endif %}
-
-
-                        {% if submission.attachment %}
-                            <div class="submission-feedback">
-                                <h3>Attachment</h3>
-                                <p>
-                                    <a
-                                        href="{% url 'submission_attachment' submission.id %}"
-                                    >
-                                        View / Download Attachment
-                                    </a>
-                                </p>
-                            </div>
-                        {% endif %}
-
-
-                        {% if submission.feedback %}
-
-                            <div class="submission-feedback">
-
-                                <h3>Instructor Feedback</h3>
-
-                                <p>
-                                    {{ submission.feedback }}
-                                </p>
-
-                            </div>
-
-                        {% else %}
-
-                            <div class="submission-feedback">
-
-                                <p>
-                                    No feedback yet.
-                                </p>
-
-                            </div>
-
-                        {% endif %}
-
+                        <span class="submission-status">
+                            {{ submission.status|title }}
+                        </span>
 
                     </div>
 
-                {% endfor %}
+                    <div class="submission-details">
 
-            </div>
+                        <p>
+                            <strong>Submitted:</strong>
+                            {{ submission.submitted_at|date:"M d, Y H:i" }}
+                        </p>
 
-        {% else %}
+                        <p>
+                            <strong>Score:</strong>
 
-            <div class="empty-state">
+                            {% if submission.score is not None %}
+                                {{ submission.score }}
+                                /
+                                {{ submission.activity.max_score }}
+                            {% else %}
+                                Not graded
+                            {% endif %}
+                        </p>
 
-                <h2>No submissions yet</h2>
+                        <p>
+                            <strong>Status:</strong>
+                            {{ submission.status|title }}
+                        </p>
 
-                <p>
-                    You have not submitted any activities yet.
-                </p>
+                    </div>
 
-                <a href="{% url 'course_list' %}">
-                    Browse Courses
-                </a>
+                    {% if submission.response_text %}
+                        <div class="submission-feedback">
+                            <h3>Submitted Response</h3>
+                            <p>{{ submission.response_text }}</p>
+                        </div>
+                    {% endif %}
 
-            </div>
+                    {% if submission.github_url %}
+                        <div class="submission-feedback">
+                            <h3>GitHub Submission</h3>
+                            <p>
+                                <a
+                                    href="{{ submission.github_url }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Open GitHub Submission
+                                </a>
+                            </p>
+                        </div>
+                    {% endif %}
 
-        {% endif %}
+                    {% if submission.attachment %}
+                        <div class="submission-feedback">
+                            <h3>Attachment</h3>
+                            <p>
+                                <a
+                                    href="{% url 'submission_attachment' submission.id %}"
+                                >
+                                    View / Download Attachment
+                                </a>
+                            </p>
+                        </div>
+                    {% endif %}
 
-    </main>
+                    <div class="submission-feedback submission-feedback-primary">
+
+                        <h3>Instructor Feedback</h3>
+
+                        {% if submission.feedback %}
+                            <p>
+                                {{ submission.feedback }}
+                            </p>
+                        {% else %}
+                            <p class="feedback-empty">
+                                No instructor feedback yet.
+                            </p>
+                        {% endif %}
+
+                    </div>
+
+                    {% if submission.status == "correction" %}
+
+                        <div class="submission-action-message submission-action-correction">
+                            <strong>Correction required.</strong>
+                            Review the instructor feedback and submit your corrected work.
+                        </div>
+
+                    {% elif submission.score is not None %}
+
+                        <div class="submission-action-message submission-action-graded">
+                            Your submission has been assessed.
+                            Use <strong>Try Activity Again</strong> to improve or resubmit your work.
+                        </div>
+
+                    {% else %}
+
+                        <div class="submission-action-message">
+                            Your submission is awaiting assessment.
+                        </div>
+
+                    {% endif %}
+
+                    <div class="submission-actions">
+
+                        <a
+                            href="{% url 'activity_detail' course.slug lesson.id activity.id %}"
+                            class="btn"
+                        >
+                            Try Activity Again
+                        </a>
+
+                        {% if submission.status == "graded" or submission.status == "correction" %}
+                            <span class="submission-action-note">
+                                Feedback is shown above.
+                            </span>
+                        {% endif %}
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </section>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <h2>No submissions yet</h2>
+
+            <p>
+                You have not submitted this activity yet.
+            </p>
+
+            <a
+                href="{% url 'activity_detail' course.slug lesson.id activity.id %}"
+                class="btn"
+            >
+                Start Activity
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</main>
+
+<footer>
+    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+</footer>
 
 </body>
 

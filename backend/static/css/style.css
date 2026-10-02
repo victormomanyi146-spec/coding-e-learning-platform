@@ -1805,3 +1805,101 @@ SHARED SITE NAVIGATION
         flex-direction: column;
     }
 }
+
+/* =========================================
+   SUBMISSION HISTORY / ASSESSMENT FEEDBACK
+   ========================================= */
+
+.submission-history-page {
+    padding-bottom: 40px;
+}
+
+.submission-history-header {
+    margin-bottom: 30px;
+}
+
+.submission-history-eyebrow {
+    margin-bottom: 6px;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.submission-history-header h1 {
+    margin: 0 0 10px;
+}
+
+.submission-history-header p {
+    margin: 0 0 16px;
+    color: #475569;
+}
+
+.submission-history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+    color: #475569;
+}
+
+.submission-attempt {
+    margin: 0 0 4px;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.submission-feedback-primary {
+    border-left: 4px solid #2563eb;
+}
+
+.feedback-empty {
+    color: #64748b;
+}
+
+.submission-action-message {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.submission-action-correction {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.submission-action-graded {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.submission-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.submission-action-note {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+    .submission-history-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .submission-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

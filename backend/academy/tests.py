@@ -236,6 +236,121 @@ class AcademyFlowTests(TestCase):
             200,
         )
 
+    def test_submission_history_shows_feedback_and_retry_action(self):
+        self.enroll_student()
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Hello")',
+            status="graded",
+            score=18,
+            feedback="Good work. Try improving the explanation.",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse(
+                "submission_history",
+                args=[
+                    self.course.slug,
+                    self.lesson.id,
+                    self.activity.id,
+                ],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(
+            response,
+            "Submission History",
+        )
+
+        self.assertContains(
+            response,
+            "Good work. Try improving the explanation.",
+        )
+
+        self.assertContains(
+            response,
+            "Try Activity Again",
+        )
+
+        activity_url = reverse(
+            "activity_detail",
+            args=[
+                self.course.slug,
+                self.lesson.id,
+                self.activity.id,
+            ],
+        )
+
+        self.assertContains(
+            response,
+            activity_url,
+        )
+
+
+    def test_submission_history_excludes_other_students_submissions(self):
+        self.enroll_student()
+
+        other_student = User.objects.create_user(
+            username="other_submission_student",
+            password="StrongPass123!",
+            role=User.Roles.STUDENT,
+        )
+
+        Submission.objects.create(
+            student=other_student,
+            activity=self.activity,
+            code='print("Other student")',
+            status="graded",
+            score=10,
+            feedback="Private feedback.",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("My submission")',
+            status="graded",
+            score=18,
+            feedback="My feedback.",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse(
+                "submission_history",
+                args=[
+                    self.course.slug,
+                    self.lesson.id,
+                    self.activity.id,
+                ],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(
+            response,
+            "My feedback.",
+        )
+
+        self.assertNotContains(
+            response,
+            "Private feedback.",
+        )
+
+        self.assertEqual(
+            response.context["submissions"].count(),
+            1,
+        )
+
+
     def test_instructor_can_review_submission(self):
         submission = Submission.objects.create(
             student=self.student,
