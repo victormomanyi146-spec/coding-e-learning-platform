@@ -211,6 +211,78 @@ class CourseDetailAPIView(APIView):
         )
 
 # ============================================================
+# AUTHENTICATED COURSE ENROLLMENT API
+# ============================================================
+
+class CourseEnrollAPIView(APIView):
+    """
+    Enroll the authenticated student in a course.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def post(self, request, slug):
+        if getattr(request.user, "role", None) != "STUDENT":
+            return Response(
+                {
+                    "detail": "Only students can enroll in courses.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        course = (
+            Course.objects
+            .filter(slug=slug)
+            .first()
+        )
+
+        if course is None:
+            return Response(
+                {
+                    "detail": "Course not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        enrollment, created = Enrollment.objects.get_or_create(
+            student=request.user,
+            course=course,
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "Enrollment created."
+                    if created
+                    else "Already enrolled."
+                ),
+                "created": created,
+                "enrollment": {
+                    "id": enrollment.id,
+                    "student": request.user.username,
+                    "course": {
+                        "id": course.id,
+                        "title": course.title,
+                        "slug": course.slug,
+                    },
+                    "enrolled_at": enrollment.enrolled_at,
+                },
+            },
+            status=(
+                status.HTTP_201_CREATED
+                if created
+                else status.HTTP_200_OK
+            ),
+        )
+
+
+# ============================================================
 # AUTHENTICATED COURSE PROGRESS API
 # ============================================================
 

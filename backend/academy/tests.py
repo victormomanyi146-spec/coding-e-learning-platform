@@ -8,6 +8,8 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 from .models import (
     Activity,
@@ -3906,3 +3908,134 @@ class StudentResubmissionTests(TestCase):
             response,
             "Correct &amp; Resubmit",
         )
+
+
+class EnrollmentAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.student = User.objects.create_user(
+            username="api_enrollment_student",
+            password="StrongPass123!",
+        )
+        self.student.role = "STUDENT"
+        self.student.save(update_fields=["role"])
+
+        self.instructor = User.objects.create_user(
+            username="api_enrollment_instructor",
+            password="StrongPass123!",
+        )
+        self.instructor.role = "INSTRUCTOR"
+        self.instructor.is_staff = True
+        self.instructor.save(
+            update_fields=["role", "is_staff"],
+        )
+
+        self.course = Course.objects.create(
+            title="API Enrollment Course",
+            description="Course used by enrollment API tests.",
+            instructor="Coding Academy",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.token = Token.objects.create(
+            user=self.student,
+        )
+
+        self.url = reverse(
+            "api-course-enroll",
+            kwargs={"slug": self.course.slug},
+        )
+
+    def test_student_can_enroll_through_api(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.token.key}",
+        )
+
+        response = self.client.post(self.url)
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+        self.assertTrue(
+            response.json()["created"],
+        )
+        self.assertTrue(
+            Enrollment.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).exists()
+        )
+
+    def test_repeated_enrollment_is_idempotent(self):
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.token.key}",
+        )
+
+        response = self.client.post(self.url)
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+        self.assertFalse(
+            response.json()["created"],
+        )
+        self.assertEqual(
+            Enrollment.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).count(),
+            1,
+        )
+
+    def test_instructor_cannot_enroll_through_student_api(self):
+        instructor_token = Token.objects.create(
+            user=self.instructor,
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {instructor_token.key}",
+        )
+
+        response = self.client.post(self.url)
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_enrollment_unlocks_course_progress_api(self):
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.token.key}",
+        )
+
+        enroll_response = self.client.post(self.url)
+
+        self.assertEqual(
+            enroll_response.status_code,
+            201,
+        )
+
+        progress_response = self.client.get(
+            reverse(
+                "api-course-progress",
+                kwargs={"slug": self.course.slug},
+            )
+        )
+
+        self.assertEqual(
+            progress_response.status_code,
+            200,
+        )
+        self.assertTrue(
+            progress_response.json()["is_enrolled"],
+        )
+

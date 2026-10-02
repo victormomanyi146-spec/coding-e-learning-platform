@@ -2,6 +2,7 @@ from django.urls import path
 
 from .api_views import (
     CourseDetailAPIView,
+    CourseEnrollAPIView,
     CourseListAPIView,
     CourseProgressAPIView,
     NotificationListAPIView,
@@ -22,6 +23,12 @@ urlpatterns = [
         "courses/<slug:slug>/",
         CourseDetailAPIView.as_view(),
         name="api-course-detail",
+    ),
+
+    path(
+        "courses/<slug:slug>/enroll/",
+        CourseEnrollAPIView.as_view(),
+        name="api-course-enroll",
     ),
 
     path(
