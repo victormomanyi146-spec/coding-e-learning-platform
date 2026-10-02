@@ -7,6 +7,9 @@ from .api_views import (
     CourseProgressAPIView,
     NotificationListAPIView,
     NotificationReadAPIView,
+    SubmissionDetailAPIView,
+    SubmissionListCreateAPIView,
+    SubmissionReviewAPIView,
     UnreadNotificationListAPIView,
 )
 
@@ -35,6 +38,24 @@ urlpatterns = [
         "courses/<slug:slug>/progress/",
         CourseProgressAPIView.as_view(),
         name="api-course-progress",
+    ),
+
+    path(
+        "submissions/",
+        SubmissionListCreateAPIView.as_view(),
+        name="api-submission-list-create",
+    ),
+
+    path(
+        "submissions/<int:submission_id>/",
+        SubmissionDetailAPIView.as_view(),
+        name="api-submission-detail",
+    ),
+
+    path(
+        "submissions/<int:submission_id>/review/",
+        SubmissionReviewAPIView.as_view(),
+        name="api-submission-review",
     ),
 
     path(

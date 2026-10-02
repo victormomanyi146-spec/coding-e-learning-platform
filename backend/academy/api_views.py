@@ -1,23 +1,36 @@
+from django.urls import reverse
+import os
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework import serializers
+from rest_framework.parsers import (
+    FormParser,
+    JSONParser,
+    MultiPartParser,
+)
 
 from .models import (
+    Activity,
+    ActivityCompletion,
     Course,
     Enrollment,
     Notification,
+    Submission,
 )
 from .api_serializers import (
     CourseDetailAPISerializer,
     CourseListAPISerializer,
+    SubmissionAPISerializer,
 )
 
 from .views import (
     _course_progress,
+    _is_activity_unlocked,
     _lesson_is_completed,
+    _mark_progress,
     _module_progress,
 )
 
@@ -448,3 +461,728 @@ class CourseProgressAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+
+# ============================================================
+# SUBMISSIONS API
+# ============================================================
+
+
+class SubmissionListCreateAPIView(APIView):
+    """
+    GET:
+        Students see their own submissions.
+        Instructors/admins see all submissions.
+
+    POST:
+        Students create coding, assignment, or lab submissions.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    parser_classes = [
+        JSONParser,
+        MultiPartParser,
+        FormParser,
+    ]
+
+    def get(self, request):
+
+        queryset = (
+            Submission.objects
+            .select_related(
+                "student",
+                "activity",
+                "activity__lesson",
+                "activity__lesson__course",
+            )
+            .order_by(
+                "-submitted_at",
+                "-id",
+            )
+        )
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(request.user, "role", None) == "INSTRUCTOR"
+        )
+
+        if not is_instructor:
+            queryset = queryset.filter(
+                student=request.user,
+            )
+
+        status_filter = str(
+            request.query_params.get(
+                "status",
+                "all",
+            )
+        ).strip().lower()
+
+        valid_filters = {
+            "all",
+            "submitted",
+            "pending",
+            "graded",
+            "correction",
+            "error",
+        }
+
+        if status_filter not in valid_filters:
+            return Response(
+                {
+                    "detail": "Invalid status filter.",
+                    "allowed_statuses": sorted(
+                        valid_filters,
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if status_filter == "submitted":
+            queryset = queryset.filter(
+                status="submitted",
+            )
+
+        elif status_filter == "pending":
+            queryset = queryset.filter(
+                status="submitted",
+                score__isnull=True,
+            )
+
+        elif status_filter in {
+            "graded",
+            "correction",
+            "error",
+        }:
+            queryset = queryset.filter(
+                status=status_filter,
+            )
+
+        serializer = SubmissionAPISerializer(
+            queryset,
+            many=True,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "count": queryset.count(),
+                "results": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+
+        if getattr(
+            request.user,
+            "role",
+            None,
+        ) != "STUDENT":
+
+            return Response(
+                {
+                    "detail": (
+                        "Only students can create submissions."
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        activity_value = request.data.get(
+            "activity",
+        )
+
+        try:
+            activity_id = int(
+                activity_value,
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "A valid activity id is required."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        activity = (
+            Activity.objects
+            .select_related(
+                "lesson",
+                "lesson__course",
+            )
+            .filter(
+                id=activity_id,
+            )
+            .first()
+        )
+
+        if activity is None:
+            return Response(
+                {
+                    "detail": "Activity not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        course = activity.lesson.course
+
+        if not Enrollment.objects.filter(
+            student=request.user,
+            course=course,
+        ).exists():
+
+            return Response(
+                {
+                    "detail": "Enrollment required.",
+                    "course": {
+                        "id": course.id,
+                        "title": course.title,
+                        "slug": course.slug,
+                    },
+                    "is_enrolled": False,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not _is_activity_unlocked(
+            request.user,
+            activity,
+        ):
+
+            return Response(
+                {
+                    "detail": (
+                        "This activity is currently locked."
+                    ),
+                    "activity": {
+                        "id": activity.id,
+                        "title": activity.title,
+                    },
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if activity.activity_type not in {
+            "coding",
+            "assignment",
+            "lab",
+        }:
+
+            return Response(
+                {
+                    "detail": (
+                        "Only coding, assignment, and lab "
+                        "activities accept submissions."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        code = str(
+            request.data.get(
+                "code",
+                "",
+            )
+            or ""
+        ).strip()
+
+        response_text = str(
+            request.data.get(
+                "response_text",
+                "",
+            )
+            or ""
+        ).strip()
+
+        github_url = str(
+            request.data.get(
+                "github_url",
+                "",
+            )
+            or ""
+        ).strip()
+
+        attachment = request.FILES.get(
+            "attachment",
+        )
+
+        # ----------------------------------------------------
+        # CODING
+        # ----------------------------------------------------
+
+        if activity.activity_type == "coding":
+
+            if not code:
+                return Response(
+                    {
+                        "detail": (
+                            "Please enter Python code before "
+                            "submitting."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if len(code) > 10000:
+                return Response(
+                    {
+                        "detail": (
+                            "Code is too long. Please keep "
+                            "submissions under 10,000 characters."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Never execute submitted code through this API.
+            submission = Submission.objects.create(
+                student=request.user,
+                activity=activity,
+                code=code,
+                status="submitted",
+            )
+
+        # ----------------------------------------------------
+        # ASSIGNMENT / LAB
+        # ----------------------------------------------------
+
+        else:
+
+            if len(response_text) > 20000:
+                return Response(
+                    {
+                        "detail": (
+                            "Your response is too long. Please "
+                            "keep it under 20,000 characters."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if len(github_url) > 500:
+                return Response(
+                    {
+                        "detail": (
+                            "The GitHub URL is too long. Please "
+                            "provide a valid submission URL."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if github_url and not github_url.startswith(
+                (
+                    "https://github.com/",
+                    "http://github.com/",
+                )
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Please enter a valid GitHub URL "
+                            "beginning with https://github.com/"
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if (
+                attachment
+                and attachment.size > 10 * 1024 * 1024
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "The attachment is too large. "
+                            "Please keep files under 10 MB."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            allowed_extensions = {
+                "pdf",
+                "doc",
+                "docx",
+                "txt",
+                "zip",
+                "py",
+                "ipynb",
+                "png",
+                "jpg",
+                "jpeg",
+            }
+
+            if attachment:
+
+                extension = (
+                    os.path.splitext(
+                        attachment.name,
+                    )[1]
+                    .lower()
+                    .lstrip(".")
+                )
+
+                if extension not in allowed_extensions:
+                    return Response(
+                        {
+                            "detail": (
+                                "Unsupported attachment type. "
+                                "Allowed files: PDF, DOC, DOCX, TXT, "
+                                "ZIP, PY, IPYNB, PNG, JPG, and JPEG."
+                            ),
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            if (
+                not response_text
+                and not github_url
+                and not attachment
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Please provide at least one submission "
+                            "item: a written response, GitHub URL, "
+                            "or attachment."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            submission = Submission.objects.create(
+                student=request.user,
+                activity=activity,
+                code="",
+                response_text=response_text,
+                github_url=github_url,
+                attachment=attachment,
+                status="submitted",
+            )
+
+        serializer = SubmissionAPISerializer(
+            submission,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "detail": "Submission created successfully.",
+                "submission": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SubmissionDetailAPIView(APIView):
+    """Return one submission to its owner or an instructor/admin."""
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get_object(
+        self,
+        request,
+        submission_id,
+    ):
+
+        submission = (
+            Submission.objects
+            .select_related(
+                "student",
+                "activity",
+                "activity__lesson",
+                "activity__lesson__course",
+            )
+            .filter(
+                id=submission_id,
+            )
+            .first()
+        )
+
+        if submission is None:
+            return None
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(
+                request.user,
+                "role",
+                None,
+            ) == "INSTRUCTOR"
+        )
+
+        if (
+            not is_instructor
+            and submission.student_id != request.user.id
+        ):
+            return None
+
+        return submission
+
+    def get(
+        self,
+        request,
+        submission_id,
+    ):
+
+        submission = self.get_object(
+            request,
+            submission_id,
+        )
+
+        if submission is None:
+            return Response(
+                {
+                    "detail": "Submission not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = SubmissionAPISerializer(
+            submission,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class SubmissionReviewAPIView(APIView):
+    """Grade a submission or mark it for correction."""
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def post(
+        self,
+        request,
+        submission_id,
+    ):
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(
+                request.user,
+                "role",
+                None,
+            ) == "INSTRUCTOR"
+        )
+
+        if not is_instructor:
+            return Response(
+                {
+                    "detail": (
+                        "You do not have permission "
+                        "to review submissions."
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        submission = (
+            Submission.objects
+            .select_related(
+                "student",
+                "activity",
+                "activity__lesson",
+                "activity__lesson__course",
+            )
+            .filter(
+                id=submission_id,
+            )
+            .first()
+        )
+
+        if submission is None:
+            return Response(
+                {
+                    "detail": "Submission not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        score_value = str(
+            request.data.get(
+                "score",
+                "",
+            )
+            or ""
+        ).strip()
+
+        feedback = str(
+            request.data.get(
+                "feedback",
+                "",
+            )
+            or ""
+        ).strip()
+
+        review_status = str(
+            request.data.get(
+                "status",
+                "graded",
+            )
+            or "graded"
+        ).strip()
+
+        if review_status not in {
+            "graded",
+            "correction",
+        }:
+            review_status = "graded"
+
+        if score_value:
+
+            try:
+                score = int(
+                    score_value,
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            f"Score must be between 0 and "
+                            f"{submission.activity.max_score}."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not (
+                0 <= score <= submission.activity.max_score
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            f"Score must be between 0 and "
+                            f"{submission.activity.max_score}."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        else:
+            score = None
+
+        submission.score = score
+        submission.feedback = feedback
+        submission.status = review_status
+
+        submission.save(
+            update_fields=[
+                "score",
+                "feedback",
+                "status",
+            ]
+        )
+
+        activity_url = reverse(
+            "activity_detail",
+            args=[
+                submission.activity.lesson.course.slug,
+                submission.activity.lesson.id,
+                submission.activity.id,
+            ],
+        )
+
+        if review_status == "correction":
+
+            notification_title = "CorrectionRequired"
+
+            notification_message = (
+                f"Your submission for "
+                f"'{submission.activity.title}' "
+                "needs correction."
+            )
+
+        else:
+
+            notification_title = "SubmissionGraded"
+
+            notification_message = (
+                f"Your submission for "
+                f"'{submission.activity.title}' "
+                "has been graded."
+            )
+
+        if feedback:
+            notification_message += (
+                f" Instructor feedback: {feedback}"
+            )
+
+        Notification.objects.create(
+            recipient=submission.student,
+            notification_type=review_status,
+            title=notification_title,
+            message=notification_message,
+            link_url=activity_url,
+        )
+
+        if review_status == "correction":
+
+            ActivityCompletion.objects.filter(
+                student=submission.student,
+                activity=submission.activity,
+            ).delete()
+
+        elif score is not None and score >= 0:
+
+            _mark_progress(
+                submission.student,
+                submission.activity,
+            )
+
+        serializer = SubmissionAPISerializer(
+            submission,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "Submission marked for correction."
+                    if review_status == "correction"
+                    else "Submission graded successfully."
+                ),
+                "submission": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )

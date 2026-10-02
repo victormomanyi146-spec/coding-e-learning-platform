@@ -4039,3 +4039,384 @@ class EnrollmentAPITests(TestCase):
             progress_response.json()["is_enrolled"],
         )
 
+
+
+from rest_framework.test import APITestCase
+
+
+class SubmissionAPITests(APITestCase):
+
+    def setUp(self):
+
+        from django.contrib.auth import get_user_model
+        from rest_framework.authtoken.models import Token
+
+        from .models import (
+            Activity,
+            Course,
+            Enrollment,
+            Lesson,
+            Module,
+        )
+
+        User = get_user_model()
+
+        self.student = User.objects.create_user(
+            username="api_submission_student",
+            password="StudentApi@2026!",
+            role="STUDENT",
+        )
+
+        self.other_student = User.objects.create_user(
+            username="api_submission_other",
+            password="OtherApi@2026!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="api_submission_instructor",
+            password="InstructorApi@2026!",
+            role="INSTRUCTOR",
+            is_staff=True,
+        )
+
+        Token.objects.get_or_create(
+            user=self.student,
+        )
+
+        Token.objects.get_or_create(
+            user=self.other_student,
+        )
+
+        Token.objects.get_or_create(
+            user=self.instructor,
+        )
+
+        self.course = Course.objects.create(
+            title="API Submission Course",
+            description="Submission API test course",
+            instructor="API Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.module = Module.objects.create(
+            course=self.course,
+            title="Module 1",
+            description="First module",
+            order=1,
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            module=self.module,
+            title="Lesson 1",
+            content="Submission lesson",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Assignment API Test",
+            activity_type="assignment",
+            instructions="Submit your response.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        Enrollment.objects.create(
+            student=self.other_student,
+            course=self.course,
+        )
+
+    def authenticate(self, user):
+
+        from rest_framework.authtoken.models import Token
+
+        token = Token.objects.get(
+            user=user,
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {token.key}"
+        )
+
+    def test_unauthenticated_create_requires_authentication(self):
+
+        response = self.client.post(
+            "/api/submissions/",
+            {
+                "activity": self.activity.id,
+                "response_text": "My work",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            401,
+        )
+
+    def test_student_can_create_assignment_submission(self):
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.post(
+            "/api/submissions/",
+            {
+                "activity": self.activity.id,
+                "response_text": "My submitted assignment.",
+                "github_url": (
+                    "https://github.com/example/project"
+                ),
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            response.data["submission"]["status"],
+            "submitted",
+        )
+
+        self.assertIsNone(
+            response.data["submission"]["score"],
+        )
+
+        self.assertEqual(
+            response.data["submission"]["activity"]["id"],
+            self.activity.id,
+        )
+
+    def test_student_list_only_returns_own_submissions(self):
+
+        from .models import Submission
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="",
+            response_text="Mine",
+            status="submitted",
+        )
+
+        Submission.objects.create(
+            student=self.other_student,
+            activity=self.activity,
+            code="",
+            response_text="Other student",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.get(
+            "/api/submissions/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.data["results"][0]["student"]["username"],
+            self.student.username,
+        )
+
+    def test_student_cannot_retrieve_another_students_submission(self):
+
+        from .models import Submission
+
+        submission = Submission.objects.create(
+            student=self.other_student,
+            activity=self.activity,
+            code="",
+            response_text="Private work",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.get(
+            f"/api/submissions/{submission.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            404,
+        )
+
+    def test_instructor_can_list_and_review_submission(self):
+
+        from .models import (
+            ActivityCompletion,
+            Notification,
+            Submission,
+        )
+
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="",
+            response_text="Ready for grading",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        list_response = self.client.get(
+            "/api/submissions/?status=pending",
+        )
+
+        self.assertEqual(
+            list_response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            list_response.data["count"],
+            1,
+        )
+
+        review_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            {
+                "score": 18,
+                "feedback": (
+                    "Good work. Add more detail next time."
+                ),
+                "status": "graded",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            review_response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            review_response.data["submission"]["score"],
+            18,
+        )
+
+        self.assertEqual(
+            review_response.data["submission"]["status"],
+            "graded",
+        )
+
+        self.assertTrue(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).exists()
+        )
+
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.student,
+                notification_type="graded",
+            ).exists()
+        )
+
+    def test_instructor_score_cannot_exceed_activity_maximum(self):
+
+        from .models import Submission
+
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="",
+            response_text="Ready",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            {
+                "score": 21,
+                "feedback": "Invalid score.",
+                "status": "graded",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )
+
+        submission.refresh_from_db()
+
+        self.assertIsNone(
+            submission.score,
+        )
+
+    def test_submission_requires_enrollment(self):
+
+        from django.contrib.auth import get_user_model
+        from rest_framework.authtoken.models import Token
+
+        User = get_user_model()
+
+        outsider = User.objects.create_user(
+            username="api_submission_outsider",
+            password="OutsiderApi@2026!",
+            role="STUDENT",
+        )
+
+        Token.objects.get_or_create(
+            user=outsider,
+        )
+
+        self.authenticate(
+            outsider,
+        )
+
+        response = self.client.post(
+            "/api/submissions/",
+            {
+                "activity": self.activity.id,
+                "response_text": (
+                    "Trying without enrollment"
+                ),
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertFalse(
+            response.data["is_enrolled"],
+        )
