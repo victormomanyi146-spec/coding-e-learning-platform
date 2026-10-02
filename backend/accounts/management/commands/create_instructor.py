@@ -1,5 +1,6 @@
 import os
 
+from django.contrib.auth.models import Permission
 from django.core.management.base import BaseCommand, CommandError
 
 from accounts.models import User
@@ -76,6 +77,14 @@ class Command(BaseCommand):
                 "password",
             ]
         )
+
+        instructor_permissions = Permission.objects.filter(
+            content_type__app_label__in=("accounts", "academy"),
+        ).exclude(
+            codename__startswith="delete_",
+        )
+
+        user.user_permissions.set(instructor_permissions)
 
         action = "created" if created else "updated"
 
