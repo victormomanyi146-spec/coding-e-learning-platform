@@ -4420,3 +4420,422 @@ class SubmissionAPITests(APITestCase):
         self.assertFalse(
             response.data["is_enrolled"],
         )
+
+
+class QuizAPITests(APITestCase):
+
+    def setUp(self):
+
+        from rest_framework.authtoken.models import Token
+
+        from .models import (
+            Activity,
+            ActivityCompletion,
+            Course,
+            Enrollment,
+            Lesson,
+            Module,
+            Quiz,
+            QuizAnswer,
+            QuizAttempt,
+            QuizChoice,
+            QuizQuestion,
+        )
+
+        User = get_user_model()
+
+        self.student = User.objects.create_user(
+            username="api_quiz_student",
+            password="QuizStudent@2026!",
+            role="STUDENT",
+        )
+
+        self.other_student = User.objects.create_user(
+            username="api_quiz_other",
+            password="QuizOther@2026!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="api_quiz_instructor",
+            password="QuizInstructor@2026!",
+            role="INSTRUCTOR",
+            is_staff=True,
+        )
+
+        Token.objects.get_or_create(
+            user=self.student,
+        )
+
+        Token.objects.get_or_create(
+            user=self.other_student,
+        )
+
+        Token.objects.get_or_create(
+            user=self.instructor,
+        )
+
+        self.course = Course.objects.create(
+            title="Quiz API Course",
+            description="Quiz API test course",
+            instructor="Quiz Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.module = Module.objects.create(
+            course=self.course,
+            title="Quiz Module",
+            order=1,
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            module=self.module,
+            title="Quiz Lesson",
+            content="Quiz lesson",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Python Quiz",
+            activity_type="quiz",
+            instructions="Answer the questions.",
+            order=1,
+            max_score=10,
+            is_required=True,
+        )
+
+        self.quiz = Quiz.objects.create(
+            activity=self.activity,
+            passing_score=50,
+        )
+
+        self.question = QuizQuestion.objects.create(
+            quiz=self.quiz,
+            question_text="What does print() do?",
+            order=1,
+            points=10,
+            is_active=True,
+        )
+
+        self.correct_choice = QuizChoice.objects.create(
+            question=self.question,
+            choice_text="Displays output",
+            order=1,
+            is_correct=True,
+        )
+
+        self.wrong_choice = QuizChoice.objects.create(
+            question=self.question,
+            choice_text="Creates a database",
+            order=2,
+            is_correct=False,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        Enrollment.objects.create(
+            student=self.other_student,
+            course=self.course,
+        )
+
+    def authenticate(self, user):
+
+        from rest_framework.authtoken.models import Token
+
+        token = Token.objects.get(
+            user=user,
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {token.key}"
+        )
+
+    def test_unauthenticated_quiz_detail_requires_authentication(self):
+
+        response = self.client.get(
+            f"/api/quizzes/{self.activity.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            401,
+        )
+
+    def test_student_can_get_quiz_without_correct_answers_exposed(self):
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.get(
+            f"/api/quizzes/{self.activity.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["passing_score"],
+            50,
+        )
+
+        self.assertEqual(
+            response.data["total_points"],
+            10,
+        )
+
+        choice = response.data["questions"][0]["choices"][0]
+
+        self.assertNotIn(
+            "is_correct",
+            choice,
+        )
+
+    def test_student_can_submit_passing_quiz_attempt(self):
+
+        from .models import (
+            ActivityCompletion,
+            QuizAnswer,
+        )
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.post(
+            f"/api/quizzes/{self.activity.id}/attempts/",
+            {
+                "answers": {
+                    str(self.question.id): self.correct_choice.id,
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            response.data["result"]["earned_points"],
+            10,
+        )
+
+        self.assertEqual(
+            response.data["result"]["total_points"],
+            10,
+        )
+
+        self.assertEqual(
+            response.data["result"]["percentage"],
+            100,
+        )
+
+        self.assertTrue(
+            response.data["result"]["passed"],
+        )
+
+        attempt_id = response.data["attempt"]["id"]
+
+        self.assertTrue(
+            QuizAnswer.objects.filter(
+                attempt_id=attempt_id,
+                question=self.question,
+                selected_choice=self.correct_choice,
+                is_correct=True,
+                points_awarded=10,
+            ).exists()
+        )
+
+        self.assertTrue(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).exists()
+        )
+
+    def test_failing_quiz_does_not_complete_activity(self):
+
+        from .models import ActivityCompletion
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.post(
+            f"/api/quizzes/{self.activity.id}/attempts/",
+            {
+                "answers": {
+                    str(self.question.id): self.wrong_choice.id,
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            response.data["result"]["earned_points"],
+            0,
+        )
+
+        self.assertFalse(
+            response.data["result"]["passed"],
+        )
+
+        self.assertFalse(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).exists()
+        )
+
+    def test_empty_answers_are_allowed_and_score_zero(self):
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.post(
+            f"/api/quizzes/{self.activity.id}/attempts/",
+            {
+                "answers": {},
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            response.data["result"]["earned_points"],
+            0,
+        )
+
+        self.assertFalse(
+            response.data["result"]["passed"],
+        )
+
+    def test_student_attempt_list_only_returns_own_attempts(self):
+
+        from .models import QuizAttempt
+
+        QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.student,
+            score=10,
+            passed=True,
+        )
+
+        QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.other_student,
+            score=0,
+            passed=False,
+        )
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.get(
+            f"/api/quizzes/{self.activity.id}/attempts/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["count"],
+            1,
+        )
+
+    def test_student_cannot_view_another_students_attempt(self):
+
+        from .models import QuizAttempt
+
+        attempt = QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.other_student,
+            score=0,
+            passed=False,
+        )
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.get(
+            f"/api/quizzes/attempts/{attempt.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            404,
+        )
+
+    def test_instructor_can_view_quiz_attempt(self):
+
+        from .models import QuizAttempt
+
+        attempt = QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.student,
+            score=10,
+            passed=True,
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            f"/api/quizzes/attempts/{attempt.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["score"],
+            10,
+        )
+
+    def test_non_object_answers_are_rejected(self):
+
+        self.authenticate(
+            self.student,
+        )
+
+        response = self.client.post(
+            f"/api/quizzes/{self.activity.id}/attempts/",
+            {
+                "answers": [
+                    self.correct_choice.id,
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )

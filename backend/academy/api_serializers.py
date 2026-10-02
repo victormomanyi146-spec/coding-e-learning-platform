@@ -5,6 +5,11 @@ from .models import (
     Course,
     Lesson,
     Module,
+    Quiz,
+    QuizAnswer,
+    QuizAttempt,
+    QuizChoice,
+    QuizQuestion,
     Submission,
 )
 
@@ -161,3 +166,182 @@ class SubmissionAPISerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(url)
 
         return url
+
+
+class QuizChoiceAPISerializer(serializers.ModelSerializer):
+    """Public quiz choice representation; correct answers are hidden."""
+
+    class Meta:
+        model = QuizChoice
+        fields = [
+            "id",
+            "choice_text",
+            "order",
+        ]
+        read_only_fields = fields
+
+
+class QuizQuestionAPISerializer(serializers.ModelSerializer):
+    choices = QuizChoiceAPISerializer(
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = QuizQuestion
+        fields = [
+            "id",
+            "question_text",
+            "order",
+            "points",
+            "choices",
+        ]
+        read_only_fields = fields
+
+
+class QuizAPISerializer(serializers.ModelSerializer):
+    activity = serializers.SerializerMethodField()
+    questions = QuizQuestionAPISerializer(
+        many=True,
+        read_only=True,
+    )
+    total_points = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Quiz
+        fields = [
+            "id",
+            "activity",
+            "passing_score",
+            "total_points",
+            "questions",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_activity(self, obj):
+        activity = obj.activity
+        lesson = activity.lesson
+        course = lesson.course
+
+        return {
+            "id": activity.id,
+            "title": activity.title,
+            "activity_type": activity.activity_type,
+            "instructions": activity.instructions,
+            "max_score": activity.max_score,
+            "lesson": {
+                "id": lesson.id,
+                "title": lesson.title,
+            },
+            "course": {
+                "id": course.id,
+                "title": course.title,
+                "slug": course.slug,
+            },
+        }
+
+    def get_total_points(self, obj):
+        return sum(
+            question.points
+            for question in obj.questions.filter(
+                is_active=True,
+            )
+        )
+
+
+class QuizAnswerAPISerializer(serializers.ModelSerializer):
+    question = serializers.SerializerMethodField()
+    selected_choice = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuizAnswer
+        fields = [
+            "id",
+            "question",
+            "selected_choice",
+            "is_correct",
+            "points_awarded",
+        ]
+        read_only_fields = fields
+
+    def get_question(self, obj):
+        return {
+            "id": obj.question_id,
+            "question_text": obj.question.question_text,
+            "points": obj.question.points,
+        }
+
+    def get_selected_choice(self, obj):
+        if obj.selected_choice is None:
+            return None
+
+        return {
+            "id": obj.selected_choice_id,
+            "choice_text": obj.selected_choice.choice_text,
+        }
+
+
+class QuizAttemptAPISerializer(serializers.ModelSerializer):
+    quiz = serializers.SerializerMethodField()
+    total_points = serializers.SerializerMethodField()
+    percentage = serializers.SerializerMethodField()
+    answers = QuizAnswerAPISerializer(
+        many=True,
+        read_only=True,
+    )
+
+    class Meta:
+        model = QuizAttempt
+        fields = [
+            "id",
+            "quiz",
+            "score",
+            "total_points",
+            "percentage",
+            "passed",
+            "completed_at",
+            "created_at",
+            "answers",
+        ]
+        read_only_fields = fields
+
+    def get_quiz(self, obj):
+        quiz = obj.quiz
+        activity = quiz.activity
+        lesson = activity.lesson
+        course = lesson.course
+
+        return {
+            "id": quiz.id,
+            "activity_id": activity.id,
+            "title": activity.title,
+            "passing_score": quiz.passing_score,
+            "lesson": {
+                "id": lesson.id,
+                "title": lesson.title,
+            },
+            "course": {
+                "id": course.id,
+                "title": course.title,
+                "slug": course.slug,
+            },
+        }
+
+    def get_total_points(self, obj):
+        return sum(
+            question.points
+            for question in obj.quiz.questions.filter(
+                is_active=True,
+            )
+        )
+
+    def get_percentage(self, obj):
+        total_points = self.get_total_points(obj)
+
+        if not total_points:
+            return 0
+
+        return round(
+            (obj.score / total_points) * 100
+        )

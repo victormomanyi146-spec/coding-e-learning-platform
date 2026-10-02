@@ -7,6 +7,9 @@ from .api_views import (
     CourseProgressAPIView,
     NotificationListAPIView,
     NotificationReadAPIView,
+    QuizAttemptDetailAPIView,
+    QuizAttemptListCreateAPIView,
+    QuizDetailAPIView,
     SubmissionDetailAPIView,
     SubmissionListCreateAPIView,
     SubmissionReviewAPIView,
@@ -38,6 +41,24 @@ urlpatterns = [
         "courses/<slug:slug>/progress/",
         CourseProgressAPIView.as_view(),
         name="api-course-progress",
+    ),
+
+    path(
+        "quizzes/<int:activity_id>/",
+        QuizDetailAPIView.as_view(),
+        name="api-quiz-detail",
+    ),
+
+    path(
+        "quizzes/<int:activity_id>/attempts/",
+        QuizAttemptListCreateAPIView.as_view(),
+        name="api-quiz-attempt-list-create",
+    ),
+
+    path(
+        "quizzes/attempts/<int:attempt_id>/",
+        QuizAttemptDetailAPIView.as_view(),
+        name="api-quiz-attempt-detail",
     ),
 
     path(

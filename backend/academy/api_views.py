@@ -1,3 +1,5 @@
+from django.utils import timezone
+from django.db import transaction
 from django.urls import reverse
 import os
 from rest_framework.authentication import TokenAuthentication
@@ -18,11 +20,17 @@ from .models import (
     Course,
     Enrollment,
     Notification,
+    Quiz,
+    QuizAnswer,
+    QuizAttempt,
+    QuizChoice,
     Submission,
 )
 from .api_serializers import (
     CourseDetailAPISerializer,
     CourseListAPISerializer,
+    QuizAPISerializer,
+    QuizAttemptAPISerializer,
     SubmissionAPISerializer,
 )
 
@@ -1184,5 +1192,575 @@ class SubmissionReviewAPIView(APIView):
                 ),
                 "submission": serializer.data,
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+# ============================================================
+# QUIZ API
+# ============================================================
+
+
+class QuizDetailAPIView(APIView):
+    """Return an authenticated student's quiz and active questions."""
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request, activity_id):
+
+        activity = (
+            Activity.objects
+            .select_related(
+                "lesson",
+                "lesson__course",
+            )
+            .filter(
+                id=activity_id,
+                activity_type="quiz",
+            )
+            .first()
+        )
+
+        if activity is None:
+            return Response(
+                {
+                    "detail": "Quiz activity not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        course = activity.lesson.course
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(
+                request.user,
+                "role",
+                None,
+            ) == "INSTRUCTOR"
+        )
+
+        if not is_instructor:
+
+            if not Enrollment.objects.filter(
+                student=request.user,
+                course=course,
+            ).exists():
+
+                return Response(
+                    {
+                        "detail": "Enrollment required.",
+                        "course": {
+                            "id": course.id,
+                            "title": course.title,
+                            "slug": course.slug,
+                        },
+                        "is_enrolled": False,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if not _is_activity_unlocked(
+                request.user,
+                activity,
+            ):
+
+                return Response(
+                    {
+                        "detail": "This quiz is currently locked.",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        quiz = (
+            Quiz.objects
+            .prefetch_related(
+                "questions__choices",
+            )
+            .filter(
+                activity=activity,
+            )
+            .first()
+        )
+
+        if quiz is None:
+            return Response(
+                {
+                    "detail": "Quiz configuration not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = QuizAPISerializer(
+            quiz,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class QuizAttemptListCreateAPIView(APIView):
+    """
+    GET:
+        Return the authenticated student's attempts.
+        Staff/instructors may see all attempts for the quiz.
+
+    POST:
+        Create and automatically grade a new quiz attempt.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    parser_classes = [
+        JSONParser,
+    ]
+
+    def get_quiz(self, request, activity_id):
+
+        activity = (
+            Activity.objects
+            .select_related(
+                "lesson",
+                "lesson__course",
+            )
+            .filter(
+                id=activity_id,
+                activity_type="quiz",
+            )
+            .first()
+        )
+
+        if activity is None:
+            return None, None
+
+        quiz = (
+            Quiz.objects
+            .prefetch_related(
+                "questions__choices",
+            )
+            .filter(
+                activity=activity,
+            )
+            .first()
+        )
+
+        return activity, quiz
+
+    def get(self, request, activity_id):
+
+        activity, quiz = self.get_quiz(
+            request,
+            activity_id,
+        )
+
+        if activity is None or quiz is None:
+            return Response(
+                {
+                    "detail": "Quiz not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        course = activity.lesson.course
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(
+                request.user,
+                "role",
+                None,
+            ) == "INSTRUCTOR"
+        )
+
+        if not is_instructor:
+
+            if not Enrollment.objects.filter(
+                student=request.user,
+                course=course,
+            ).exists():
+
+                return Response(
+                    {
+                        "detail": "Enrollment required.",
+                        "is_enrolled": False,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            attempts = QuizAttempt.objects.filter(
+                quiz=quiz,
+                student=request.user,
+            )
+
+        else:
+            attempts = QuizAttempt.objects.filter(
+                quiz=quiz,
+            )
+
+        attempts = (
+            attempts
+            .select_related(
+                "quiz",
+                "quiz__activity",
+                "quiz__activity__lesson",
+                "quiz__activity__lesson__course",
+            )
+            .prefetch_related(
+                "answers__question",
+                "answers__selected_choice",
+            )
+            .order_by(
+                "-created_at",
+                "-id",
+            )
+        )
+
+        serializer = QuizAttemptAPISerializer(
+            attempts,
+            many=True,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "count": attempts.count(),
+                "results": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, activity_id):
+
+        if getattr(
+            request.user,
+            "role",
+            None,
+        ) != "STUDENT":
+
+            return Response(
+                {
+                    "detail": (
+                        "Only students can submit quiz attempts."
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        activity, quiz = self.get_quiz(
+            request,
+            activity_id,
+        )
+
+        if activity is None or quiz is None:
+            return Response(
+                {
+                    "detail": "Quiz not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        course = activity.lesson.course
+
+        if not Enrollment.objects.filter(
+            student=request.user,
+            course=course,
+        ).exists():
+
+            return Response(
+                {
+                    "detail": "Enrollment required.",
+                    "course": {
+                        "id": course.id,
+                        "title": course.title,
+                        "slug": course.slug,
+                    },
+                    "is_enrolled": False,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not _is_activity_unlocked(
+            request.user,
+            activity,
+        ):
+
+            return Response(
+                {
+                    "detail": "This quiz is currently locked.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        active_questions = list(
+            quiz.questions
+            .filter(
+                is_active=True,
+            )
+            .order_by(
+                "order",
+                "id",
+            )
+        )
+
+        answers_data = request.data.get(
+            "answers",
+            {},
+        )
+
+        if answers_data is None:
+            answers_data = {}
+
+        if not isinstance(
+            answers_data,
+            dict,
+        ):
+
+            return Response(
+                {
+                    "detail": (
+                        "answers must be an object mapping "
+                        "question ids to choice ids."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        total_points = sum(
+            question.points
+            for question in active_questions
+        )
+
+        earned_points = 0
+
+        with transaction.atomic():
+
+            attempt = QuizAttempt.objects.create(
+                quiz=quiz,
+                student=request.user,
+                score=0,
+                passed=False,
+                completed_at=timezone.now(),
+            )
+
+            for question in active_questions:
+
+                choice_id = answers_data.get(
+                    str(question.id),
+                )
+
+                if choice_id is None:
+                    choice_id = answers_data.get(
+                        question.id,
+                    )
+
+                if choice_id in (
+                    None,
+                    "",
+                ):
+                    continue
+
+                try:
+                    choice_id = int(
+                        choice_id,
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    continue
+
+                selected_choice = (
+                    QuizChoice.objects
+                    .filter(
+                        id=choice_id,
+                        question=question,
+                    )
+                    .first()
+                )
+
+                if selected_choice is None:
+                    continue
+
+                is_correct = (
+                    selected_choice.is_correct
+                )
+
+                points_awarded = (
+                    question.points
+                    if is_correct
+                    else 0
+                )
+
+                earned_points += points_awarded
+
+                QuizAnswer.objects.create(
+                    attempt=attempt,
+                    question=question,
+                    selected_choice=selected_choice,
+                    is_correct=is_correct,
+                    points_awarded=points_awarded,
+                )
+
+            percentage = (
+                round(
+                    (
+                        earned_points
+                        / total_points
+                    ) * 100
+                )
+                if total_points
+                else 0
+            )
+
+            passed = (
+                total_points > 0
+                and percentage >= quiz.passing_score
+            )
+
+            attempt.score = earned_points
+            attempt.passed = passed
+            attempt.completed_at = timezone.now()
+
+            attempt.save(
+                update_fields=[
+                    "score",
+                    "passed",
+                    "completed_at",
+                ]
+            )
+
+            if passed:
+                _mark_progress(
+                    request.user,
+                    activity,
+                )
+
+        attempt = (
+            QuizAttempt.objects
+            .select_related(
+                "quiz",
+                "quiz__activity",
+                "quiz__activity__lesson",
+                "quiz__activity__lesson__course",
+            )
+            .prefetch_related(
+                "answers__question",
+                "answers__selected_choice",
+            )
+            .get(
+                id=attempt.id,
+            )
+        )
+
+        serializer = QuizAttemptAPISerializer(
+            attempt,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "detail": "Quiz attempt submitted successfully.",
+                "result": {
+                    "earned_points": earned_points,
+                    "total_points": total_points,
+                    "percentage": percentage,
+                    "passed": passed,
+                    "passing_score": quiz.passing_score,
+                },
+                "attempt": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class QuizAttemptDetailAPIView(APIView):
+    """Return one quiz attempt to its owner or an instructor/admin."""
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request, attempt_id):
+
+        attempt = (
+            QuizAttempt.objects
+            .select_related(
+                "quiz",
+                "quiz__activity",
+                "quiz__activity__lesson",
+                "quiz__activity__lesson__course",
+            )
+            .prefetch_related(
+                "answers__question",
+                "answers__selected_choice",
+            )
+            .filter(
+                id=attempt_id,
+            )
+            .first()
+        )
+
+        if attempt is None:
+            return Response(
+                {
+                    "detail": "Quiz attempt not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_instructor = (
+            request.user.is_staff
+            or getattr(
+                request.user,
+                "role",
+                None,
+            ) == "INSTRUCTOR"
+        )
+
+        if (
+            not is_instructor
+            and attempt.student_id != request.user.id
+        ):
+            return Response(
+                {
+                    "detail": "Quiz attempt not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = QuizAttemptAPISerializer(
+            attempt,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            serializer.data,
             status=status.HTTP_200_OK,
         )
