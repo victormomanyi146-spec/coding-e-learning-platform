@@ -1304,6 +1304,52 @@ class AcademyFlowTests(TestCase):
             self.course.title,
         )
 
+    def test_my_courses_dashboard_exposes_next_required_activity(self):
+        self.enroll_student()
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("my_courses")
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        enrollment = response.context["enrollments"][0]
+
+        self.assertEqual(
+            enrollment.next_activity.id,
+            self.activity.id,
+        )
+
+        self.assertContains(
+            response,
+            "Next Step",
+        )
+
+        self.assertContains(
+            response,
+            self.activity.title,
+        )
+
+        self.assertContains(
+            response,
+            "Start Next Activity",
+        )
+
+        self.assertContains(
+            response,
+            reverse(
+                "activity_detail",
+                args=[
+                    self.course.slug,
+                    self.lesson.id,
+                    self.activity.id,
+                ],
+            ),
+        )
+
+
     def test_my_courses_dashboard_displays_recent_assessment_and_notification(self):
         self.enroll_student()
 

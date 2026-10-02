@@ -436,6 +436,61 @@ def my_courses(request):
             enrollment.course,
         )
 
+        # ----------------------------------------------------
+        # Determine the next required learning activity.
+        #
+        # Use the existing lesson-unlock and completion rules
+        # so the dashboard never recommends locked content.
+        # ----------------------------------------------------
+
+        enrollment.next_activity = None
+
+        lessons = (
+            Lesson.objects
+            .filter(course=enrollment.course)
+            .prefetch_related("activities")
+            .order_by("order", "id")
+        )
+
+        for lesson in lessons:
+            if not _is_lesson_unlocked(
+                request.user,
+                lesson,
+            ):
+                continue
+
+            required_activities = list(
+                lesson.activities
+                .filter(is_required=True)
+                .order_by("order", "id")
+            )
+
+            if not required_activities:
+                continue
+
+            completed_activity_ids = set(
+                ActivityCompletion.objects.filter(
+                    student=request.user,
+                    activity__in=required_activities,
+                ).values_list(
+                    "activity_id",
+                    flat=True,
+                )
+            )
+
+            next_activity = next(
+                (
+                    activity
+                    for activity in required_activities
+                    if activity.id not in completed_activity_ids
+                ),
+                None,
+            )
+
+            if next_activity is not None:
+                enrollment.next_activity = next_activity
+                break
+
     recent_submissions = list(
         Submission.objects
         .filter(student=request.user)

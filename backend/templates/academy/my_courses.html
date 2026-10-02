@@ -117,6 +117,43 @@
                             {% endif %}
                         </div>
 
+                        <div class="dashboard-course-next-step">
+                            <h4>Next Step</h4>
+
+                            {% if enrollment.next_activity %}
+                                <p>
+                                    <strong>{{ enrollment.next_activity.title }}</strong>
+                                </p>
+
+                                <p>
+                                    Lesson:
+                                    {{ enrollment.next_activity.lesson.title }}
+                                </p>
+
+                                <a
+                                    href="{% url 'activity_detail' enrollment.course.slug enrollment.next_activity.lesson.id enrollment.next_activity.id %}"
+                                    class="btn"
+                                >
+                                    Start Next Activity
+                                </a>
+                            {% elif enrollment.progress.activity_percentage == 100 %}
+                                <p>
+                                    All course activities are complete.
+                                </p>
+
+                                <a
+                                    href="{% url 'course_progress' enrollment.course.slug %}"
+                                    class="btn"
+                                >
+                                    View Progress
+                                </a>
+                            {% else %}
+                                <p>
+                                    Continue exploring the course content.
+                                </p>
+                            {% endif %}
+                        </div>
+
                         <a
                             href="{% url 'course_detail' enrollment.course.slug %}"
                             class="btn"
