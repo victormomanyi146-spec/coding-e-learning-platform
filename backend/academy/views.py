@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -25,6 +26,9 @@ from .models import (
     Submission,
     Notification,
 )
+
+
+User = get_user_model()
 
 
 # ============================================================
@@ -1725,7 +1729,56 @@ def instructor_dashboard(request):
     quizzes_count = Quiz.objects.count()
 
     pending_submissions_count = Submission.objects.filter(
+        status="submitted",
         score__isnull=True,
+    ).count()
+
+    graded_submissions = list(
+        Submission.objects
+        .filter(
+            score__isnull=False,
+        )
+        .select_related(
+            "activity",
+        )
+    )
+
+    graded_submission_percentages = []
+
+    for submission in graded_submissions:
+        max_score = submission.activity.max_score or 0
+
+        if max_score > 0:
+            percentage = (
+                float(submission.score)
+                / float(max_score)
+            ) * 100
+
+            graded_submission_percentages.append(
+                percentage
+            )
+
+    submission_average_percentage = (
+        round(
+            sum(graded_submission_percentages)
+            / len(graded_submission_percentages),
+            1,
+        )
+        if graded_submission_percentages
+        else None
+    )
+
+    total_students_count = User.objects.filter(
+        role="STUDENT",
+    ).count()
+
+    completed_quiz_attempts_count = QuizAttempt.objects.filter(
+        completed_at__isnull=False,
+    ).count()
+
+    passed_quiz_attempts_count = QuizAttempt.objects.filter(
+        completed_at__isnull=False,
+        passed=True,
     ).count()
 
     recent_submissions = list(
@@ -1742,6 +1795,24 @@ def instructor_dashboard(request):
         )[:8]
     )
 
+    recent_quiz_attempts = list(
+        QuizAttempt.objects
+        .filter(
+            completed_at__isnull=False,
+        )
+        .select_related(
+            "student",
+            "quiz",
+            "quiz__activity",
+            "quiz__activity__lesson",
+            "quiz__activity__lesson__course",
+        )
+        .order_by(
+            "-completed_at",
+            "-id",
+        )[:8]
+    )
+
     return render(
         request,
         "academy/instructor_dashboard.html",
@@ -1753,7 +1824,21 @@ def instructor_dashboard(request):
             "activities_count": activities_count,
             "quizzes_count": quizzes_count,
             "pending_submissions_count": pending_submissions_count,
+            "total_students_count": total_students_count,
+            "graded_submissions_count": len(
+                graded_submissions
+            ),
+            "submission_average_percentage": (
+                submission_average_percentage
+            ),
+            "completed_quiz_attempts_count": (
+                completed_quiz_attempts_count
+            ),
+            "passed_quiz_attempts_count": (
+                passed_quiz_attempts_count
+            ),
             "recent_submissions": recent_submissions,
+            "recent_quiz_attempts": recent_quiz_attempts,
         },
     )
 def instructor_content_management(request):

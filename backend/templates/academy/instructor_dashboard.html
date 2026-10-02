@@ -235,8 +235,54 @@
 
 
     <!-- =====================================================
-         MAIN INSTRUCTOR ACTIONS
+         LEARNING ANALYTICS
          ===================================================== -->
+
+    <div class="section">
+
+        <h2>Learning Analytics</h2>
+
+        <div class="stats">
+
+            <div class="stat">
+                <strong>{{ total_students_count }}</strong>
+                <span>Students</span>
+            </div>
+
+            <div class="stat">
+                <strong>{{ graded_submissions_count }}</strong>
+                <span>Graded Submissions</span>
+            </div>
+
+            <div class="stat">
+                <strong>
+                    {% if submission_average_percentage is not None %}
+                        {{ submission_average_percentage }}%
+                    {% else %}
+                        ?
+                    {% endif %}
+                </strong>
+                <span>Submission Average</span>
+            </div>
+
+            <div class="stat">
+                <strong>{{ completed_quiz_attempts_count }}</strong>
+                <span>Completed Quiz Attempts</span>
+            </div>
+
+            <div class="stat">
+                <strong>{{ passed_quiz_attempts_count }}</strong>
+                <span>Passed Quiz Attempts</span>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         MAIN INSTRUCTOR ACTIONS
+         =====================================================
 
     <div class="actions">
 
@@ -431,6 +477,83 @@
 
             <p class="empty">
                 No student submissions have been received yet.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         RECENT QUIZ ATTEMPTS
+         ===================================================== -->
+
+    <div class="section">
+
+        <h2>Recent Quiz Attempts</h2>
+
+        {% if recent_quiz_attempts %}
+
+            <table class="submission-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Student</th>
+                        <th>Course</th>
+                        <th>Quiz</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for attempt in recent_quiz_attempts %}
+
+                        <tr>
+
+                            <td>
+                                {{ attempt.student.username }}
+                            </td>
+
+                            <td>
+                                {{ attempt.quiz.activity.lesson.course.title }}
+                            </td>
+
+                            <td>
+                                {{ attempt.quiz.activity.title }}
+                            </td>
+
+                            <td>
+                                {% if attempt.passed %}
+                                    Passed
+                                {% else %}
+                                    Not Passed
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if attempt.score is not None %}
+                                    {{ attempt.score }}
+                                {% else %}
+                                    ?
+                                {% endif %}
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        {% else %}
+
+            <p class="empty">
+                No completed quiz attempts have been recorded yet.
             </p>
 
         {% endif %}
