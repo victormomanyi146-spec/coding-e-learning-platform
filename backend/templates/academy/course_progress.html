@@ -101,6 +101,39 @@
 
     <section class="dashboard-section">
         <div class="section-heading">
+            <h2>Next Step</h2>
+
+            {% if next_activity %}
+                <p>
+                    Continue with your next incomplete required activity.
+                </p>
+
+                <p>
+                    <strong>{{ next_activity.title }}</strong>
+                    &mdash;
+                    Lesson: {{ next_activity.lesson.title }}
+                </p>
+
+                <a
+                    href="{% url 'activity_detail' course.slug next_activity.lesson.id next_activity.id %}"
+                    class="dashboard-button"
+                >
+                    Start Next Activity
+                </a>
+            {% elif course_completed %}
+                <p>
+                    All lessons in this course are complete.
+                </p>
+            {% else %}
+                <p>
+                    Continue exploring the available course content.
+                </p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="section-heading">
             <h2>Module Progress</h2>
             <p>Work through each module in sequence.</p>
         </div>

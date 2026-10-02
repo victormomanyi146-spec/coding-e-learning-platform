@@ -101,6 +101,56 @@ class AcademyFlowTests(TestCase):
             "Fundamentals",
         )
 
+    def test_course_progress_exposes_next_required_activity(self):
+        self.enroll_student()
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse(
+                "course_progress",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.context["next_activity"].id,
+            self.activity.id,
+        )
+
+        self.assertContains(
+            response,
+            "Next Step",
+        )
+
+        self.assertContains(
+            response,
+            self.activity.title,
+        )
+
+        self.assertContains(
+            response,
+            "Start Next Activity",
+        )
+
+        self.assertContains(
+            response,
+            reverse(
+                "activity_detail",
+                args=[
+                    self.course.slug,
+                    self.lesson.id,
+                    self.activity.id,
+                ],
+            ),
+        )
+
+
     def test_course_progress_displays_real_values(self):
         self.enroll_student()
         self.client.force_login(

@@ -436,60 +436,10 @@ def my_courses(request):
             enrollment.course,
         )
 
-        # ----------------------------------------------------
-        # Determine the next required learning activity.
-        #
-        # Use the existing lesson-unlock and completion rules
-        # so the dashboard never recommends locked content.
-        # ----------------------------------------------------
-
-        enrollment.next_activity = None
-
-        lessons = (
-            Lesson.objects
-            .filter(course=enrollment.course)
-            .prefetch_related("activities")
-            .order_by("order", "id")
+        enrollment.next_activity = _next_required_activity(
+            request.user,
+            enrollment.course,
         )
-
-        for lesson in lessons:
-            if not _is_lesson_unlocked(
-                request.user,
-                lesson,
-            ):
-                continue
-
-            required_activities = list(
-                lesson.activities
-                .filter(is_required=True)
-                .order_by("order", "id")
-            )
-
-            if not required_activities:
-                continue
-
-            completed_activity_ids = set(
-                ActivityCompletion.objects.filter(
-                    student=request.user,
-                    activity__in=required_activities,
-                ).values_list(
-                    "activity_id",
-                    flat=True,
-                )
-            )
-
-            next_activity = next(
-                (
-                    activity
-                    for activity in required_activities
-                    if activity.id not in completed_activity_ids
-                ),
-                None,
-            )
-
-            if next_activity is not None:
-                enrollment.next_activity = next_activity
-                break
 
     recent_submissions = list(
         Submission.objects
@@ -3522,6 +3472,11 @@ def course_progress(request, course_slug):
 
     progress = _course_progress(request.user, course)
 
+    next_activity = _next_required_activity(
+        request.user,
+        course,
+    )
+
     modules = list(
         course.modules.prefetch_related("lessons").all()
     )
@@ -3552,6 +3507,7 @@ def course_progress(request, course_slug):
             "progress": progress,
             "modules": modules,
             "course_completed": course_completed,
+            "next_activity": next_activity,
             "recent_submissions": progress["recent_submissions"],
             "recent_assessments": progress["recent_assessments"],
         },
@@ -3667,6 +3623,55 @@ def _is_activity_unlocked(student, activity):
         student,
         activity.lesson,
     )
+
+
+def _next_required_activity(student, course):
+    """
+    Return the first incomplete required activity that the student
+    is currently allowed to access.
+
+    The existing lesson-unlock and activity-completion rules are
+    reused so dashboard and progress pages recommend only accessible
+    learning content.
+    """
+    lessons = (
+        Lesson.objects
+        .filter(course=course)
+        .prefetch_related("activities")
+        .order_by("order", "id")
+    )
+
+    for lesson in lessons:
+        if not _is_lesson_unlocked(
+            student,
+            lesson,
+        ):
+            continue
+
+        required_activities = list(
+            lesson.activities
+            .filter(is_required=True)
+            .order_by("order", "id")
+        )
+
+        if not required_activities:
+            continue
+
+        completed_activity_ids = set(
+            ActivityCompletion.objects.filter(
+                student=student,
+                activity__in=required_activities,
+            ).values_list(
+                "activity_id",
+                flat=True,
+            )
+        )
+
+        for activity in required_activities:
+            if activity.id not in completed_activity_ids:
+                return activity
+
+    return None
 
 
 
