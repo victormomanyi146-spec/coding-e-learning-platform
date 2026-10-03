@@ -1257,19 +1257,19 @@ def notification_read(request, notification_id):
 @login_required
 def student_assessment_history(request):
     """
-    Display all submissions belonging to the authenticated student.
+    Unified student assessment center.
 
-    Students can see:
-    - submitted work
-    - submission date
+    Combines coding/assignment/lab submissions with completed
+    quiz attempts while keeping every record scoped to the
+    authenticated student.
+
+    Supported filters:
+    - course
+    - assessment type
     - assessment status
-    - score
-    - instructor feedback
-
-    Students can never see submissions belonging to another user.
     """
 
-    base_queryset = (
+    submissions_base = (
         Submission.objects
         .filter(student=request.user)
         .select_related(
@@ -1277,95 +1277,401 @@ def student_assessment_history(request):
             "activity__lesson",
             "activity__lesson__course",
         )
-        .order_by("-submitted_at")
+        .order_by("-submitted_at", "-id")
     )
 
-    status_filter = request.GET.get(
-        "status",
-        "all",
-    ).lower()
+    quiz_attempts_base = (
+        QuizAttempt.objects
+        .filter(
+            student=request.user,
+            completed_at__isnull=False,
+        )
+        .select_related(
+            "quiz",
+            "quiz__activity",
+            "quiz__activity__lesson",
+            "quiz__activity__lesson__course",
+        )
+        .prefetch_related(
+            "quiz__questions",
+        )
+        .order_by("-completed_at", "-id")
+    )
 
-    valid_filters = {
+    # --------------------------------------------------------
+    # FILTER VALUES
+    # --------------------------------------------------------
+
+    course_filter = (
+        request.GET.get(
+            "course",
+            "all",
+        )
+        .strip()
+    )
+
+    type_filter = (
+        request.GET.get(
+            "type",
+            "all",
+        )
+        .strip()
+        .lower()
+    )
+
+    status_filter = (
+        request.GET.get(
+            "status",
+            "all",
+        )
+        .strip()
+        .lower()
+    )
+
+    valid_types = {
+        "all",
+        "submission",
+        "quiz",
+    }
+
+    valid_statuses = {
         "all",
         "pending",
         "graded",
         "correction",
         "error",
+        "passed",
+        "not_passed",
     }
 
-    if status_filter not in valid_filters:
+    if type_filter not in valid_types:
+        type_filter = "all"
+
+    if status_filter not in valid_statuses:
         status_filter = "all"
 
     # --------------------------------------------------------
-    # SUMMARY COUNTS
+    # COURSE LIST
     # --------------------------------------------------------
 
-    counts = {
-        "all": base_queryset.count(),
+    courses = (
+        Course.objects
+        .filter(
+            enrollments__student=request.user,
+        )
+        .distinct()
+        .order_by(
+            "title",
+            "id",
+        )
+    )
 
-        "pending": base_queryset.filter(
-            status="submitted",
-            score__isnull=True,
-        ).count(),
+    selected_course = None
 
-        "graded": base_queryset.filter(
-            status="graded",
-            score__isnull=False,
-        ).count(),
+    if course_filter != "all":
 
-        "correction": base_queryset.filter(
-            status="correction",
-        ).count(),
+        selected_course = (
+            courses
+            .filter(
+                slug=course_filter,
+            )
+            .first()
+        )
 
-        "error": base_queryset.filter(
-            status="error",
-        ).count(),
-    }
+        if selected_course is None:
+            course_filter = "all"
+
+        else:
+            submissions_base = submissions_base.filter(
+                activity__lesson__course=selected_course,
+            )
+
+            quiz_attempts_base = quiz_attempts_base.filter(
+                quiz__activity__lesson__course=selected_course,
+            )
 
     # --------------------------------------------------------
-    # FILTERED SUBMISSIONS
+    # SUMMARY
     # --------------------------------------------------------
 
-    if status_filter == "pending":
+    submission_count = submissions_base.count()
+    quiz_count = quiz_attempts_base.count()
 
-        submissions = base_queryset.filter(
+    pending_count = submissions_base.filter(
+        status="submitted",
+        score__isnull=True,
+    ).count()
+
+    graded_count = submissions_base.filter(
+        status="graded",
+        score__isnull=False,
+    ).count()
+
+    correction_count = submissions_base.filter(
+        status="correction",
+    ).count()
+
+    error_count = submissions_base.filter(
+        status="error",
+    ).count()
+
+    quiz_passed_count = quiz_attempts_base.filter(
+        passed=True,
+    ).count()
+
+    quiz_not_passed_count = quiz_attempts_base.filter(
+        passed=False,
+    ).count()
+
+    quiz_pass_rate = (
+        round(
+            (
+                quiz_passed_count
+                / quiz_count
+            ) * 100,
+            1,
+        )
+        if quiz_count
+        else None
+    )
+
+    # --------------------------------------------------------
+    # APPLY TYPE / STATUS FILTERS
+    # --------------------------------------------------------
+
+    submissions = submissions_base
+
+    if type_filter == "quiz":
+        submissions = submissions.none()
+
+    elif status_filter == "pending":
+        submissions = submissions.filter(
             status="submitted",
             score__isnull=True,
         )
 
     elif status_filter == "graded":
-
-        submissions = base_queryset.filter(
+        submissions = submissions.filter(
             status="graded",
             score__isnull=False,
         )
 
     elif status_filter == "correction":
-
-        submissions = base_queryset.filter(
+        submissions = submissions.filter(
             status="correction",
         )
 
     elif status_filter == "error":
-
-        submissions = base_queryset.filter(
+        submissions = submissions.filter(
             status="error",
         )
 
-    else:
+    elif status_filter in {
+        "passed",
+        "not_passed",
+    }:
+        submissions = submissions.none()
 
-        submissions = base_queryset
+    quiz_attempts = quiz_attempts_base
+
+    if type_filter == "submission":
+        quiz_attempts = quiz_attempts.none()
+
+    elif status_filter == "passed":
+        quiz_attempts = quiz_attempts.filter(
+            passed=True,
+        )
+
+    elif status_filter == "not_passed":
+        quiz_attempts = quiz_attempts.filter(
+            passed=False,
+        )
+
+    elif status_filter in {
+        "pending",
+        "graded",
+        "correction",
+        "error",
+    }:
+        quiz_attempts = quiz_attempts.none()
+
+    # --------------------------------------------------------
+    # BUILD COMBINED ASSESSMENT LIST
+    # --------------------------------------------------------
+
+    assessments = []
+
+    for submission in submissions:
+
+        if submission.status == "correction":
+            status_label = "Needs Correction"
+            status_class = "correction-status"
+
+        elif submission.score is not None:
+            status_label = "Graded"
+            status_class = "graded-status"
+
+        elif submission.status == "error":
+            status_label = "Execution Error"
+            status_class = "error-status"
+
+        else:
+            status_label = "Pending Review"
+            status_class = "pending-status"
+
+        percentage = None
+
+        if (
+            submission.score is not None
+            and submission.activity.max_score
+        ):
+            percentage = round(
+                (
+                    submission.score
+                    / submission.activity.max_score
+                ) * 100,
+                1,
+            )
+
+        assessments.append(
+            {
+                "kind": "submission",
+                "title": submission.activity.title,
+                "course": submission.activity.lesson.course,
+                "lesson": submission.activity.lesson,
+                "submitted_at": submission.submitted_at,
+                "score": submission.score,
+                "max_score": submission.activity.max_score,
+                "percentage": percentage,
+                "status_label": status_label,
+                "status_class": status_class,
+                "submission": submission,
+            }
+        )
+
+    for attempt in quiz_attempts:
+
+        total_points = sum(
+            question.points
+            for question in attempt.quiz.questions.all()
+            if question.is_active
+        )
+
+        percentage = (
+            round(
+                (
+                    attempt.score
+                    / total_points
+                ) * 100,
+                1,
+            )
+            if total_points
+            else 0
+        )
+
+        if attempt.passed:
+            status_label = "Quiz Passed"
+            status_class = "graded-status"
+        else:
+            status_label = "Not Passed"
+            status_class = "error-status"
+
+        assessments.append(
+            {
+                "kind": "quiz",
+                "title": attempt.quiz.activity.title,
+                "course": attempt.quiz.activity.lesson.course,
+                "lesson": attempt.quiz.activity.lesson,
+                "submitted_at": (
+                    attempt.completed_at
+                    or attempt.created_at
+                ),
+                "score": attempt.score,
+                "max_score": total_points,
+                "percentage": percentage,
+                "status_label": status_label,
+                "status_class": status_class,
+                "attempt": attempt,
+            }
+        )
+
+    assessments.sort(
+        key=lambda item: item["submitted_at"],
+        reverse=True,
+    )
+
+    # --------------------------------------------------------
+    # PERFORMANCE SUMMARY
+    # --------------------------------------------------------
+
+    score_percentages = []
+
+    for submission in submissions_base:
+
+        if (
+            submission.score is not None
+            and submission.activity.max_score
+        ):
+            score_percentages.append(
+                (
+                    submission.score
+                    / submission.activity.max_score
+                ) * 100
+            )
+
+    for attempt in quiz_attempts_base:
+
+        total_points = sum(
+            question.points
+            for question in attempt.quiz.questions.all()
+            if question.is_active
+        )
+
+        if total_points:
+            score_percentages.append(
+                (
+                    attempt.score
+                    / total_points
+                ) * 100
+            )
+
+    average_percentage = (
+        round(
+            sum(score_percentages)
+            / len(score_percentages),
+            1,
+        )
+        if score_percentages
+        else None
+    )
+
+    counts = {
+        "all": submission_count + quiz_count,
+        "submissions": submission_count,
+        "quizzes": quiz_count,
+        "pending": pending_count,
+        "graded": graded_count,
+        "correction": correction_count,
+        "error": error_count,
+        "quiz_passed": quiz_passed_count,
+        "quiz_not_passed": quiz_not_passed_count,
+    }
 
     return render(
         request,
         "academy/student_assessment_history.html",
         {
-            "submissions": submissions,
-            "counts": counts,
+            "assessments": assessments,
+            "courses": courses,
+            "selected_course": selected_course,
+            "course_filter": course_filter,
+            "type_filter": type_filter,
             "status_filter": status_filter,
+            "counts": counts,
+            "average_percentage": average_percentage,
+            "quiz_pass_rate": quiz_pass_rate,
         },
     )
-
 
 
 # ============================================================

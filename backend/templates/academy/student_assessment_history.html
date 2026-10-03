@@ -1,15 +1,19 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
 
     <title>
-        Assessment History | Coding E-Learning Platform
+        Assessment Center | Coding Academy
     </title>
 
     <link
@@ -18,10 +22,11 @@
     >
 
     <style>
+
         .assessment-page {
-            max-width: 1100px;
+            max-width: 1150px;
             margin: 0 auto;
-            padding: 30px 20px 60px;
+            padding: 30px 20px 70px;
         }
 
         .assessment-header {
@@ -34,6 +39,7 @@
 
         .assessment-header p {
             margin: 0;
+            line-height: 1.6;
         }
 
         .assessment-summary {
@@ -45,23 +51,10 @@
         }
 
         .summary-card {
-            display: block;
             padding: 18px;
             border: 1px solid #dbe3ef;
             border-radius: 12px;
             background: #ffffff;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .summary-card:hover {
-            transform: translateY(-1px);
-        }
-
-        .summary-card.active {
-            border-color: #2563eb;
-            box-shadow:
-                0 0 0 2px rgba(37, 99, 235, 0.12);
         }
 
         .summary-number {
@@ -73,6 +66,87 @@
 
         .summary-label {
             color: #64748b;
+        }
+
+        .assessment-controls {
+            display: grid;
+            gap: 16px;
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #dbe3ef;
+            border-radius: 14px;
+            background: #ffffff;
+        }
+
+        .course-filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .course-filter-form label {
+            font-weight: 700;
+        }
+
+        .course-filter-form select {
+            min-width: 250px;
+            padding: 9px 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .filter-group strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-link {
+            display: inline-block;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            text-decoration: none;
+        }
+
+        .filter-link.active {
+            border-color: #2563eb;
+            box-shadow:
+                0 0 0 2px rgba(37, 99, 235, 0.12);
+        }
+
+        .performance-banner {
+            display: grid;
+            grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .performance-card {
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #dbe3ef;
+            background: #ffffff;
+        }
+
+        .performance-label {
+            display: block;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .performance-value {
+            font-size: 26px;
+            font-weight: 700;
         }
 
         .assessment-card {
@@ -132,7 +206,7 @@
         .assessment-grid {
             display: grid;
             grid-template-columns:
-                repeat(2, minmax(0, 1fr));
+                repeat(3, minmax(0, 1fr));
             gap: 14px;
             margin-bottom: 18px;
         }
@@ -213,7 +287,8 @@
             text-decoration: none;
         }
 
-        @media (max-width: 800px) {
+        @media (max-width: 900px) {
+
             .assessment-summary {
                 grid-template-columns:
                     repeat(2, minmax(0, 1fr));
@@ -223,216 +298,373 @@
                 grid-template-columns: 1fr;
             }
 
+            .performance-banner {
+                grid-template-columns: 1fr;
+            }
+
             .assessment-card-header {
                 flex-direction: column;
             }
+
         }
 
         @media (max-width: 500px) {
+
             .assessment-summary {
                 grid-template-columns: 1fr;
             }
+
+            .course-filter-form {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .course-filter-form select {
+                width: 100%;
+                min-width: 0;
+            }
+
         }
+
     </style>
+
 </head>
 
 <body>
 
-<header>
-    <nav>
-        <a href="/">
-            <strong>Coding Academy</strong>
-        </a>
-
-        <a href="{% url 'course_list' %}">
-            Courses
-        </a>
-
-        <a href="{% url 'my_courses' %}">
-            My Courses
-        </a>
-
-        <a href="{% url 'student_assessment_history' %}">
-            Assessments
-        </a>
-
-        {% if request.user.is_staff %}
-            <a href="/admin/">Admin</a>
-        {% endif %}
-    </nav>
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
 </header>
 
 <main class="assessment-page">
 
     <div class="page-actions">
+
         <a href="{% url 'my_courses' %}">
-            ← My Courses
+            &larr; My Courses
         </a>
+
+        <a href="{% url 'course_list' %}">
+            Browse Courses
+        </a>
+
     </div>
 
     <section class="assessment-header">
-        <h1>Assessment History</h1>
+
+        <h1>
+            Assessment Center
+        </h1>
 
         <p>
-            View your submitted work, grades,
-            instructor feedback, and assessment status.
+            Track your submitted work, quiz attempts,
+            grades, feedback, and assessment performance
+            in one place.
         </p>
-    </section>
 
-    <!-- SUMMARY -->
+    </section>
 
     <section class="assessment-summary">
 
-        <a
-            href="{% url 'student_assessment_history' %}"
-            class="summary-card
-                {% if status_filter == 'all' %}active{% endif %}"
-        >
+        <div class="summary-card">
             <span class="summary-number">
                 {{ counts.all }}
             </span>
-
             <span class="summary-label">
-                All Submissions
+                Total Assessments
             </span>
-        </a>
+        </div>
 
-        <a
-            href="{% url 'student_assessment_history' %}?status=pending"
-            class="summary-card
-                {% if status_filter == 'pending' %}active{% endif %}"
-        >
+        <div class="summary-card">
             <span class="summary-number">
                 {{ counts.pending }}
             </span>
-
             <span class="summary-label">
                 Pending Review
             </span>
-        </a>
+        </div>
 
-        <a
-            href="{% url 'student_assessment_history' %}?status=graded"
-            class="summary-card
-                {% if status_filter == 'graded' %}active{% endif %}"
-        >
+        <div class="summary-card">
             <span class="summary-number">
                 {{ counts.graded }}
             </span>
-
             <span class="summary-label">
-                Graded
+                Graded Submissions
             </span>
-        </a>
+        </div>
 
-        <a
-            href="{% url 'student_assessment_history' %}?status=correction"
-            class="summary-card
-                {% if status_filter == 'correction' %}active{% endif %}"
-        >
+        <div class="summary-card">
             <span class="summary-number">
-                {{ counts.correction }}
+                {{ counts.quizzes }}
             </span>
-
             <span class="summary-label">
-                Needs Correction
+                Quiz Attempts
             </span>
-        </a>
-
-        <a
-            href="{% url 'student_assessment_history' %}?status=error"
-            class="summary-card
-                {% if status_filter == 'error' %}active{% endif %}"
-        >
-            <span class="summary-number">
-                {{ counts.error }}
-            </span>
-
-            <span class="summary-label">
-                Execution Errors
-            </span>
-        </a>
+        </div>
 
     </section>
 
+    <section class="performance-banner">
 
-    <!-- SUBMISSIONS -->
+        <div class="performance-card">
 
-    {% if submissions %}
+            <span class="performance-label">
+                Average Assessment Score
+            </span>
 
-        {% for submission in submissions %}
+            <span class="performance-value">
+
+                {% if average_percentage is not None %}
+                    {{ average_percentage }}%
+                {% else %}
+                    Not graded
+                {% endif %}
+
+            </span>
+
+        </div>
+
+        <div class="performance-card">
+
+            <span class="performance-label">
+                Quiz Pass Rate
+            </span>
+
+            <span class="performance-value">
+
+                {% if quiz_pass_rate is not None %}
+                    {{ quiz_pass_rate }}%
+                {% else %}
+                    No completed quizzes
+                {% endif %}
+
+            </span>
+
+        </div>
+
+    </section>
+
+    <section class="assessment-controls">
+
+        <form
+            method="get"
+            class="course-filter-form"
+        >
+
+            <label for="assessment-course">
+                Course
+            </label>
+
+            <select
+                id="assessment-course"
+                name="course"
+                onchange="this.form.submit()"
+            >
+
+                <option
+                    value="all"
+                    {% if course_filter == "all" %}selected{% endif %}
+                >
+                    All Courses
+                </option>
+
+                {% for course in courses %}
+
+                    <option
+                        value="{{ course.slug }}"
+                        {% if course_filter == course.slug %}selected{% endif %}
+                    >
+                        {{ course.title }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+            <input
+                type="hidden"
+                name="type"
+                value="{{ type_filter }}"
+            >
+
+            <input
+                type="hidden"
+                name="status"
+                value="{{ status_filter }}"
+            >
+
+        </form>
+
+        <div class="filter-group">
+
+            <strong>
+                Assessment Type
+            </strong>
+
+            <div class="filter-row">
+
+                <a
+                    href="?course={{ course_filter }}&type=all&status={{ status_filter }}"
+                    class="filter-link {% if type_filter == 'all' %}active{% endif %}"
+                >
+                    All
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type=submission&status={{ status_filter }}"
+                    class="filter-link {% if type_filter == 'submission' %}active{% endif %}"
+                >
+                    Submissions
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type=quiz&status={{ status_filter }}"
+                    class="filter-link {% if type_filter == 'quiz' %}active{% endif %}"
+                >
+                    Quizzes
+                </a>
+
+            </div>
+
+        </div>
+
+        <div class="filter-group">
+
+            <strong>
+                Status
+            </strong>
+
+            <div class="filter-row">
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=all"
+                    class="filter-link {% if status_filter == 'all' %}active{% endif %}"
+                >
+                    All
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=pending"
+                    class="filter-link {% if status_filter == 'pending' %}active{% endif %}"
+                >
+                    Pending
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=graded"
+                    class="filter-link {% if status_filter == 'graded' %}active{% endif %}"
+                >
+                    Graded
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=correction"
+                    class="filter-link {% if status_filter == 'correction' %}active{% endif %}"
+                >
+                    Needs Correction
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=error"
+                    class="filter-link {% if status_filter == 'error' %}active{% endif %}"
+                >
+                    Errors
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=passed"
+                    class="filter-link {% if status_filter == 'passed' %}active{% endif %}"
+                >
+                    Quiz Passed
+                </a>
+
+                <a
+                    href="?course={{ course_filter }}&type={{ type_filter }}&status=not_passed"
+                    class="filter-link {% if status_filter == 'not_passed' %}active{% endif %}"
+                >
+                    Quiz Not Passed
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    {% if assessments %}
+
+        {% for assessment in assessments %}
 
             <article class="assessment-card">
 
                 <div class="assessment-card-header">
 
                     <div>
+
                         <h2 class="assessment-title">
-                            {{ submission.activity.title }}
+                            {{ assessment.title }}
                         </h2>
 
                         <div class="assessment-meta">
+
                             <strong>
-                                {{ submission.activity.lesson.course.title }}
+                                {{ assessment.course.title }}
                             </strong>
+
                             <br>
 
                             Lesson:
-                            {{ submission.activity.lesson.title }}
+                            {{ assessment.lesson.title }}
 
                             <br>
 
-                            Submitted:
-                            {{ submission.submitted_at|date:"M d, Y H:i" }}
+                            {% if assessment.kind == "quiz" %}
+                                Attempted:
+                            {% else %}
+                                Submitted:
+                            {% endif %}
+
+                            {{ assessment.submitted_at|date:"M d, Y H:i" }}
+
                         </div>
+
                     </div>
 
-
-                    {% if submission.status == "correction" %}
-
-                        <span class="status-badge correction-status">
-                            Needs Correction
-                        </span>
-
-                    {% elif submission.score is not None %}
-
-                        <span class="status-badge graded-status">
-                            Graded
-                        </span>
-
-                    {% elif submission.status == "error" %}
-
-                        <span class="status-badge error-status">
-                            Execution Error
-                        </span>
-
-                    {% else %}
-
-                        <span class="status-badge pending-status">
-                            PendingReview
-                        </span>
-
-                    {% endif %}
+                    <span
+                        class="status-badge {{ assessment.status_class }}"
+                    >
+                        {{ assessment.status_label }}
+                    </span>
 
                 </div>
-
 
                 <div class="assessment-grid">
 
                     <div class="assessment-detail">
-                        <strong>Activity</strong>
-                        {{ submission.activity.title }}
+
+                        <strong>
+                            Assessment Type
+                        </strong>
+
+                        {% if assessment.kind == "quiz" %}
+                            Quiz
+                        {% else %}
+                            {{ assessment.submission.activity.get_activity_type_display }}
+                        {% endif %}
+
                     </div>
 
                     <div class="assessment-detail">
 
-                        <strong>Score</strong>
+                        <strong>
+                            Score
+                        </strong>
 
-                        {% if submission.score is not None %}
+                        {% if assessment.score is not None %}
 
-                            {{ submission.score }}
+                            {{ assessment.score }}
                             /
-                            {{ submission.activity.max_score }}
+                            {{ assessment.max_score }}
 
                         {% else %}
 
@@ -444,117 +676,151 @@
 
                     <div class="assessment-detail">
 
-                        <strong>Status</strong>
+                        <strong>
+                            Percentage
+                        </strong>
 
-                        {% if submission.status == "correction" %}
-
-                            Needs Correction
-
-                        {% elif submission.score is not None %}
-
-                            Graded
-
-                        {% elif submission.status == "error" %}
-
-                            Execution Error
-
+                        {% if assessment.percentage is not None %}
+                            {{ assessment.percentage }}%
                         {% else %}
-
-                            PendingReview
-
-                        {% endif %}
-
-                    </div>
-
-                    <div class="assessment-detail">
-
-                        <strong>Assessment</strong>
-
-                        {% if submission.feedback %}
-
-                            Feedback available
-
-                        {% else %}
-
-                            No feedback yet
-
+                            Pending
                         {% endif %}
 
                     </div>
 
                 </div>
 
+                {% if assessment.kind == "submission" %}
 
-                {% if submission.feedback %}
+                    {% if assessment.submission.response_text %}
 
-                    <div class="feedback-box">
+                        <div class="submitted-work">
 
-                        <h3>
-                            Instructor Feedback
-                        </h3>
+                            <strong>
+                                Written Response
+                            </strong>
 
-                        <p>
-                            {{ submission.feedback|linebreaksbr }}
-                        </p>
+                            <p>
+                                {{ assessment.submission.response_text|linebreaksbr }}
+                            </p>
 
-                    </div>
-
-                {% endif %}
-
-
-                {% if submission.code %}
-
-                    <div class="submitted-work">
-
-                        <h3>
-                            Submitted Work
-                        </h3>
-
-                        <pre><code>{{ submission.code }}</code></pre>
-
-                    </div>
-
-                {% endif %}
-
-
-                <div class="assessment-actions">
-
-                    {% if submission.status == "correction" or submission.status == "error" %}
-
-                        <a
-                            href="{% url 'student_resubmit_submission' submission.id %}"
-                        >
-                            Correct &amp; Resubmit
-                        </a>
+                        </div>
 
                     {% endif %}
 
-                    <a
-                        href="{% url 'activity_detail'
-                            submission.activity.lesson.course.slug
-                            submission.activity.lesson.id
-                            submission.activity.id %}"
-                    >
-                        Open Activity
-                    </a>
+                    {% if assessment.submission.code %}
 
-                    <a
-                        href="{% url 'submission_history'
-                            submission.activity.lesson.course.slug
-                            submission.activity.lesson.id
-                            submission.activity.id %}"
-                    >
-                        View Submission History
-                    </a>
+                        <div class="submitted-work">
 
-                    <a
-                        href="{% url 'course_progress'
-                            submission.activity.lesson.course.slug %}"
-                    >
-                        Course Progress
-                    </a>
+                            <strong>
+                                Submitted Code
+                            </strong>
 
-                </div>
+                            <pre>{{ assessment.submission.code }}</pre>
+
+                        </div>
+
+                    {% endif %}
+
+                    {% if assessment.submission.github_url %}
+
+                        <div class="submitted-work">
+
+                            <strong>
+                                GitHub Submission
+                            </strong>
+
+                            <p>
+                                <a
+                                    href="{{ assessment.submission.github_url }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    {{ assessment.submission.github_url }}
+                                </a>
+                            </p>
+
+                        </div>
+
+                    {% endif %}
+
+                    {% if assessment.submission.feedback %}
+
+                        <div class="feedback-box">
+
+                            <h3>
+                                Instructor Feedback
+                            </h3>
+
+                            <p>
+                                {{ assessment.submission.feedback|linebreaksbr }}
+                            </p>
+
+                        </div>
+
+                    {% endif %}
+
+                    <div class="assessment-actions">
+
+                        {% if assessment.submission.status == "correction" or assessment.submission.status == "error" %}
+
+                            <a
+                                href="{% url 'student_resubmit_submission' assessment.submission.id %}"
+                            >
+                                Correct &amp; Resubmit
+                            </a>
+
+                        {% endif %}
+
+                        <a
+                            href="{% url 'activity_detail' assessment.course.slug assessment.lesson.id assessment.submission.activity.id %}"
+                        >
+                            Open Activity
+                        </a>
+
+                        <a
+                            href="{% url 'submission_history' assessment.course.slug assessment.lesson.id assessment.submission.activity.id %}"
+                        >
+                            Submission History
+                        </a>
+
+                        {% if assessment.submission.attachment %}
+
+                            <a
+                                href="{% url 'submission_attachment' assessment.submission.id %}"
+                            >
+                                View Attachment
+                            </a>
+
+                        {% endif %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="assessment-actions">
+
+                        <a
+                            href="{% url 'quiz_attempt_review' assessment.course.slug assessment.attempt.id %}"
+                        >
+                            Review Attempt
+                        </a>
+
+                        <a
+                            href="{% url 'quiz_take' assessment.course.slug assessment.lesson.id assessment.attempt.quiz.activity.id %}"
+                        >
+                            Retake Quiz
+                        </a>
+
+                        <a
+                            href="{% url 'course_progress' assessment.course.slug %}"
+                        >
+                            Course Progress
+                        </a>
+
+                    </div>
+
+                {% endif %}
 
             </article>
 
@@ -564,57 +830,14 @@
 
         <section class="empty-state">
 
-            {% if status_filter == "all" %}
+            <h2>
+                No assessments found
+            </h2>
 
-                <h2>No submissions yet</h2>
-
-                <p>
-                    Your submitted activities will appear here
-                    after you submit your work.
-                </p>
-
-                <a href="{% url 'course_list' %}">
-                    Browse Courses
-                </a>
-
-            {% elif status_filter == "pending" %}
-
-                <h2>No pending submissions</h2>
-
-                <p>
-                    You currently have no submissions awaiting review.
-                </p>
-
-                <a href="{% url 'student_assessment_history' %}">
-                    View All Assessments
-                </a>
-
-            {% elif status_filter == "graded" %}
-
-                <h2>No graded submissions</h2>
-
-                <p>
-                    Your assessed submissions will appear here.
-                </p>
-
-                <a href="{% url 'student_assessment_history' %}">
-                    View All Assessments
-                </a>
-
-            {% else %}
-
-                <h2>No submissions need correction</h2>
-
-                <p>
-                    You currently have no submissions marked
-                    as needing correction.
-                </p>
-
-                <a href="{% url 'student_assessment_history' %}">
-                    View All Assessments
-                </a>
-
-            {% endif %}
+            <p>
+                Try changing the course, assessment type,
+                or status filters.
+            </p>
 
         </section>
 
@@ -623,10 +846,14 @@
 </main>
 
 <footer>
+
     <p>
-        &copy; 2026 Coding E-Learning Platform
+        &copy; 2026 Coding Academy.
+        All rights reserved.
     </p>
+
 </footer>
 
 </body>
+
 </html>
