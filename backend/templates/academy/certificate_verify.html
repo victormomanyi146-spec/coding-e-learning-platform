@@ -1,0 +1,171 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Certificate Verification | Coding Academy</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+    <style>
+        .verification-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px 70px;
+        }
+
+        .verification-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            padding: 42px;
+            box-shadow: 0 12px 35px rgba(15, 23, 42, .10);
+        }
+
+        .verification-status {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+
+        .verification-card h1 {
+            margin: 12px 0 24px;
+        }
+
+        .verification-details {
+            display: grid;
+            gap: 18px;
+            margin-top: 28px;
+        }
+
+        .verification-row {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 14px;
+        }
+
+        .verification-row strong,
+        .verification-row span {
+            display: block;
+        }
+
+        .verification-code {
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        @media (max-width: 650px) {
+            .verification-card {
+                padding: 28px 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
+
+<main class="verification-page">
+
+    <section class="verification-card">
+
+        {% if is_verified %}
+
+            <div class="verification-status">
+                Verified Certificate
+            </div>
+
+            <h1>
+                Certificate of Completion
+            </h1>
+
+            <p>
+                This certificate was issued by Coding Academy.
+            </p>
+
+            <div class="verification-details">
+
+                <div class="verification-row">
+                    <strong>Learner</strong>
+                    <span>{{ certificate.learner_name }}</span>
+                </div>
+
+                <div class="verification-row">
+                    <strong>Course</strong>
+                    <span>{{ certificate.course_title }}</span>
+                </div>
+
+                <div class="verification-row">
+                    <strong>Issued</strong>
+                    <span>
+                        {{ certificate.issued_at|date:"F j, Y" }}
+                    </span>
+                </div>
+
+                {% if certificate.average_score is not None %}
+                    <div class="verification-row">
+                        <strong>Average Assessment Score</strong>
+                        <span>
+                            {{ certificate.average_score }}%
+                        </span>
+                    </div>
+                {% endif %}
+
+                <div class="verification-row">
+                    <strong>Verification ID</strong>
+                    <span class="verification-code">
+                        {{ certificate.verification_code }}
+                    </span>
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <div class="verification-status">
+                Certificate Invalid
+            </div>
+
+            <h1>
+                Verification Failed
+            </h1>
+
+            <p>
+                This certificate has been marked as invalid by
+                Coding Academy.
+            </p>
+
+            <div class="verification-row">
+                <strong>Verification ID</strong>
+                <span class="verification-code">
+                    {{ certificate.verification_code }}
+                </span>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+<footer>
+    <p>
+        &copy; 2026 Coding Academy.
+        All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>

@@ -231,10 +231,24 @@
 
             </div>
 
+            <div class="certificate-meta-box screen-only">
+                <strong>Verification ID</strong>
+                <span>
+                    {{ certificate.verification_code }}
+                </span>
+            </div>
+
             <p class="certificate-note">
                 This certificate reflects completion status in
                 the Coding Academy learning platform at the date
                 shown above.
+            </p>
+
+            <p class="certificate-note screen-only">
+                Verify this certificate:
+                <a href="{{ verification_url }}">
+                    {{ verification_url }}
+                </a>
             </p>
 
         </section>

@@ -15,6 +15,7 @@ from .models import (
     Activity,
     ActivityCompletion,
     Course,
+    Certificate,
     Enrollment,
     Lesson,
     Module,
@@ -3510,16 +3511,79 @@ def course_certificate(request, course_slug):
         or request.user.username
     )
 
+    certificate, created = Certificate.objects.get_or_create(
+        student=request.user,
+        course=course,
+        defaults={
+            "learner_name": learner_name,
+            "course_title": course.title,
+            "average_score": progress["average_score"],
+        },
+    )
+
+    if not created:
+        certificate_updates = {}
+
+        if certificate.learner_name != learner_name:
+            certificate_updates["learner_name"] = learner_name
+
+        if certificate.course_title != course.title:
+            certificate_updates["course_title"] = course.title
+
+        if certificate.average_score != progress["average_score"]:
+            certificate_updates["average_score"] = progress["average_score"]
+
+        if certificate_updates:
+            Certificate.objects.filter(
+                pk=certificate.pk,
+            ).update(**certificate_updates)
+
+            certificate.refresh_from_db()
+
+    verification_url = request.build_absolute_uri(
+        reverse(
+            "certificate_verify",
+            args=[certificate.verification_code],
+        )
+    )
+
     return render(
         request,
         "academy/course_certificate.html",
         {
             "course": course,
             "certificate_available": True,
-            "learner_name": learner_name,
-            "issued_on": timezone.localdate(),
+            "learner_name": certificate.learner_name,
+            "issued_on": timezone.localdate(certificate.issued_at),
             "progress": progress,
+            "certificate": certificate,
+            "verification_url": verification_url,
         },
+    )
+
+
+# ============================================================
+# CERTIFICATE VERIFICATION
+# ============================================================
+
+def certificate_verify(request, verification_code):
+    """
+    Public certificate verification endpoint.
+    """
+
+    certificate = get_object_or_404(
+        Certificate,
+        verification_code=verification_code,
+    )
+
+    return render(
+        request,
+        "academy/certificate_verify.html",
+        {
+            "certificate": certificate,
+            "is_verified": certificate.is_valid,
+        },
+        status=200,
     )
 
 

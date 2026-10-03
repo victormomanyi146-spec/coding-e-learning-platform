@@ -170,6 +170,12 @@ path(
     ),
     
     # ========================================================
+    path(
+        "certificates/verify/<uuid:verification_code>/",
+        views.certificate_verify,
+        name="certificate_verify",
+    ),
+
     # COURSE CERTIFICATE
     # ========================================================
 

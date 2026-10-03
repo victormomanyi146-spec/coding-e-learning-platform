@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import (
     Activity,
     ActivityCompletion,
+    Certificate,
     Course,
     Enrollment,
     Lesson,
@@ -415,4 +416,39 @@ class QuizAnswerAdmin(admin.ModelAdmin):
         "selected_choice",
         "is_correct",
         "points_awarded",
+    )
+
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = (
+        "learner_name",
+        "course",
+        "verification_code",
+        "issued_at",
+        "is_valid",
+    )
+    search_fields = (
+        "learner_name",
+        "student__username",
+        "student__email",
+        "course__title",
+        "verification_code",
+    )
+    list_filter = (
+        "is_valid",
+        "course",
+        "issued_at",
+    )
+    ordering = (
+        "-issued_at",
+    )
+    readonly_fields = (
+        "verification_code",
+        "student",
+        "course",
+        "learner_name",
+        "course_title",
+        "average_score",
+        "issued_at",
     )

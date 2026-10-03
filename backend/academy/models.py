@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.validators import FileExtensionValidator
 from django.conf import settings
 from django.db import models
@@ -455,6 +457,67 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.course.title}"
+
+class Certificate(models.Model):
+
+    verification_code = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="certificates",
+    )
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="certificates",
+    )
+
+    learner_name = models.CharField(
+        max_length=255,
+    )
+
+    course_title = models.CharField(
+        max_length=200,
+    )
+
+    average_score = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    issued_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    is_valid = models.BooleanField(
+        default=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "course"],
+                name="unique_student_course_certificate",
+            )
+        ]
+
+        ordering = [
+            "-issued_at",
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.learner_name} - "
+            f"{self.course_title} - "
+            f"{self.verification_code}"
+        )
+
 
 class Notification(models.Model):
 

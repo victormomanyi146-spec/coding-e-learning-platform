@@ -15,6 +15,7 @@ from .models import (
     Activity,
     ActivityCompletion,
     Course,
+    Certificate,
     Enrollment,
     Lesson,
     Module,
@@ -2858,6 +2859,150 @@ class AcademyFlowTests(TestCase):
 # ============================================================
 # INSTRUCTOR COURSE CONTENT MANAGEMENT TESTS
 # ============================================================
+
+    def test_completed_certificate_is_persisted(self):
+        self.enroll_student()
+
+        self.client.force_login(
+            self.student
+        )
+
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        certificate = Certificate.objects.get(
+            student=self.student,
+            course=self.course,
+        )
+
+        self.assertTrue(
+            certificate.is_valid,
+        )
+
+        self.assertEqual(
+            certificate.learner_name,
+            self.student.username,
+        )
+
+        self.assertEqual(
+            certificate.course_title,
+            self.course.title,
+        )
+
+        self.assertEqual(
+            response.context["certificate"].id,
+            certificate.id,
+        )
+
+        self.assertEqual(
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).count(),
+            1,
+        )
+
+
+    def test_certificate_verification_page_displays_valid_certificate(self):
+        certificate = Certificate.objects.create(
+            student=self.student,
+            course=self.course,
+            learner_name=self.student.username,
+            course_title=self.course.title,
+            average_score=85,
+        )
+
+        response = self.client.get(
+            reverse(
+                "certificate_verify",
+                args=[certificate.verification_code],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertTrue(
+            response.context["is_verified"],
+        )
+
+        self.assertContains(
+            response,
+            "Verified Certificate",
+        )
+
+        self.assertContains(
+            response,
+            self.student.username,
+        )
+
+        self.assertContains(
+            response,
+            self.course.title,
+        )
+
+        self.assertContains(
+            response,
+            str(certificate.verification_code),
+        )
+
+
+    def test_certificate_verification_page_marks_invalid_certificate(self):
+        certificate = Certificate.objects.create(
+            student=self.student,
+            course=self.course,
+            learner_name=self.student.username,
+            course_title=self.course.title,
+            is_valid=False,
+        )
+
+        response = self.client.get(
+            reverse(
+                "certificate_verify",
+                args=[certificate.verification_code],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertFalse(
+            response.context["is_verified"],
+        )
+
+        self.assertContains(
+            response,
+            "Certificate Invalid",
+        )
+
+        self.assertContains(
+            response,
+            "Verification Failed",
+        )
+
+        self.assertContains(
+            response,
+            str(certificate.verification_code),
+        )
+
 
 class InstructorContentManagementTests(TestCase):
 
