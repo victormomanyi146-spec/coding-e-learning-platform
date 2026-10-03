@@ -1039,6 +1039,156 @@ class AcademyFlowTests(TestCase):
         )
 
 
+    def test_course_certificate_requires_login(self):
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+
+    def test_course_certificate_blocks_incomplete_course(self):
+        self.enroll_student()
+
+        self.client.force_login(
+            self.student
+        )
+
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertContains(
+            response,
+            "Complete all required activities",
+            status_code=403,
+        )
+
+
+    def test_course_certificate_requires_enrollment(self):
+        self.client.force_login(
+            self.student
+        )
+
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertContains(
+            response,
+            "must be enrolled",
+            status_code=403,
+        )
+
+
+    def test_completed_student_can_view_course_certificate(self):
+        self.enroll_student()
+
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        self.client.force_login(
+            self.student
+        )
+
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertTrue(
+            response.context["certificate_available"]
+        )
+
+        self.assertEqual(
+            response.context["learner_name"],
+            self.student.username,
+        )
+
+        self.assertContains(
+            response,
+            "Certificate of Completion",
+        )
+
+        self.assertContains(
+            response,
+            self.course.title,
+        )
+
+        self.assertContains(
+            response,
+            self.student.username,
+        )
+
+        self.assertContains(
+            response,
+            "Back to Progress",
+        )
+
+        self.assertContains(
+            response,
+            "Print / Save as PDF",
+        )
+
+
+    def test_certificate_is_scoped_to_enrolled_course(self):
+        other_course = Course.objects.create(
+            title="Other Course",
+            description="Another course",
+            instructor="Other Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.client.force_login(
+            self.student
+        )
+
+        response = self.client.get(
+            reverse(
+                "course_certificate",
+                args=[other_course.slug],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403
+        )
+
+
+
     def test_student_cannot_access_instructor_submissions(self):
         self.client.force_login(
             self.student

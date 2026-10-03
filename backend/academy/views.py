@@ -3444,6 +3444,85 @@ def quiz_attempt_review(request, course_slug, attempt_id):
     )
 
 
+# ============================================================
+# COURSE CERTIFICATE
+# ============================================================
+
+@login_required
+def course_certificate(request, course_slug):
+    """
+    Display a printable course certificate only after the learner
+    has completed every lesson's required activities.
+    """
+
+    course = get_object_or_404(
+        Course,
+        slug=course_slug,
+    )
+
+    if not _is_enrolled(
+        request.user,
+        course,
+    ):
+        return render(
+            request,
+            "academy/course_certificate.html",
+            {
+                "course": course,
+                "certificate_available": False,
+                "error_message": (
+                    "You must be enrolled in this course "
+                    "to access its certificate."
+                ),
+            },
+            status=403,
+        )
+
+    progress = _course_progress(
+        request.user,
+        course,
+    )
+
+    certificate_available = (
+        progress["lessons_total"] > 0
+        and progress["lessons_completed"]
+        == progress["lessons_total"]
+    )
+
+    if not certificate_available:
+        return render(
+            request,
+            "academy/course_certificate.html",
+            {
+                "course": course,
+                "certificate_available": False,
+                "progress": progress,
+                "error_message": (
+                    "Complete all required activities in the course "
+                    "before accessing the certificate."
+                ),
+            },
+            status=403,
+        )
+
+    learner_name = (
+        request.user.get_full_name().strip()
+        or request.user.username
+    )
+
+    return render(
+        request,
+        "academy/course_certificate.html",
+        {
+            "course": course,
+            "certificate_available": True,
+            "learner_name": learner_name,
+            "issued_on": timezone.localdate(),
+            "progress": progress,
+        },
+    )
+
+
 @login_required
 def course_progress(request, course_slug):
     """Display the authenticated student's progress for a course."""

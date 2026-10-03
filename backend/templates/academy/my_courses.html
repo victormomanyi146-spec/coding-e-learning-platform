@@ -147,6 +147,13 @@
                                 >
                                     View Progress
                                 </a>
+
+                                <a
+                                    href="{% url 'course_certificate' enrollment.course.slug %}"
+                                    class="btn"
+                                >
+                                    View Certificate
+                                </a>
                             {% else %}
                                 <p>
                                     Continue exploring the course content.

@@ -29,6 +29,15 @@
             <div>
                 <h2>Course Completed!</h2>
                 <p>You have completed all lessons in this course.</p>
+
+                <p style="margin-top: 14px;">
+                    <a
+                        href="{% url 'course_certificate' course.slug %}"
+                        class="dashboard-button"
+                    >
+                        View & Download Certificate
+                    </a>
+                </p>
             </div>
         </section>
     {% endif %}

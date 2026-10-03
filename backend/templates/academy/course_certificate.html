@@ -1,0 +1,286 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Course Certificate | {{ course.title }} | Coding Academy
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+    <style>
+        .certificate-page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+        }
+
+        .certificate-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .certificate {
+            background: #ffffff;
+            border: 10px solid #1e3a8a;
+            outline: 3px solid #bfdbfe;
+            padding: 70px 60px;
+            text-align: center;
+            box-shadow:
+                0 12px 35px rgba(15, 23, 42, .12);
+        }
+
+        .certificate-kicker {
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .certificate h1 {
+            margin: 20px 0 10px;
+            font-size: clamp(32px, 5vw, 56px);
+        }
+
+        .certificate-name {
+            margin: 24px 0 10px;
+            font-size: clamp(28px, 4vw, 46px);
+            font-weight: 700;
+        }
+
+        .certificate-course {
+            font-size: clamp(22px, 3vw, 34px);
+            font-weight: 600;
+            margin: 16px auto;
+        }
+
+        .certificate-meta {
+            margin-top: 38px;
+            display: grid;
+            grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            text-align: left;
+        }
+
+        .certificate-meta-box {
+            border-top: 1px solid #cbd5e1;
+            padding-top: 12px;
+        }
+
+        .certificate-meta-box strong,
+        .certificate-meta-box span {
+            display: block;
+        }
+
+        .certificate-note {
+            margin-top: 34px;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .certificate-error {
+            max-width: 760px;
+            margin: 40px auto;
+            padding: 28px;
+            background: #ffffff;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+        }
+
+        @media (max-width: 650px) {
+            .certificate {
+                padding: 42px 24px;
+                border-width: 6px;
+            }
+
+            .certificate-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
+
+            body {
+                background: #ffffff !important;
+            }
+
+            header,
+            footer,
+            .certificate-actions,
+            .certificate-note,
+            .screen-only {
+                display: none !important;
+            }
+
+            .certificate-page {
+                max-width: none;
+                padding: 0;
+            }
+
+            .certificate {
+                min-height: 78vh;
+                box-shadow: none;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="site-header">
+    {% include "academy/site_nav.html" %}
+</header>
+
+<main class="certificate-page">
+
+    {% if certificate_available %}
+
+        <div class="certificate-actions screen-only">
+
+            <a
+                href="{% url 'course_progress' course.slug %}"
+                class="dashboard-secondary-button"
+            >
+                Back to Progress
+            </a>
+
+            <button
+                type="button"
+                class="dashboard-button"
+                onclick="window.print()"
+            >
+                Print / Save as PDF
+            </button>
+
+        </div>
+
+        <section
+            class="certificate"
+            aria-label="Course completion certificate"
+        >
+
+            <div class="certificate-kicker">
+                Coding Academy
+            </div>
+
+            <h1>
+                Certificate of Completion
+            </h1>
+
+            <p>
+                This certificate is awarded to
+            </p>
+
+            <div class="certificate-name">
+                {{ learner_name }}
+            </div>
+
+            <p>
+                for successfully completing the course
+            </p>
+
+            <div class="certificate-course">
+                {{ course.title }}
+            </div>
+
+            <p>
+                The learner completed all lessons and required
+                learning activities recorded for this course.
+            </p>
+
+            <div class="certificate-meta">
+
+                <div class="certificate-meta-box">
+                    <strong>Issued</strong>
+                    <span>
+                        {{ issued_on|date:"F j, Y" }}
+                    </span>
+                </div>
+
+                <div class="certificate-meta-box">
+                    <strong>
+                        Average Assessment Score
+                    </strong>
+
+                    <span>
+                        {% if progress.average_score is not None %}
+                            {{ progress.average_score }}%
+                        {% else %}
+                            Not graded
+                        {% endif %}
+                    </span>
+                </div>
+
+            </div>
+
+            <p class="certificate-note">
+                This certificate reflects completion status in
+                the Coding Academy learning platform at the date
+                shown above.
+            </p>
+
+        </section>
+
+    {% else %}
+
+        <section class="certificate-error">
+
+            <h1>
+                Certificate Unavailable
+            </h1>
+
+            <p>
+                {{ error_message }}
+            </p>
+
+            {% if progress %}
+                <p>
+                    Current progress:
+                    {{ progress.lessons_completed }}
+                    /
+                    {{ progress.lessons_total }}
+                    lessons completed
+                    ({{ progress.lesson_percentage }}%).
+                </p>
+            {% endif %}
+
+            <a
+                href="{% url 'course_progress' course.slug %}"
+                class="dashboard-button"
+            >
+                Return to Course Progress
+            </a>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+<footer>
+    <p>
+        &copy; 2026 Coding Academy.
+        All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>

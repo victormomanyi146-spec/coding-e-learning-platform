@@ -169,6 +169,16 @@ path(
         name="quiz_attempt_review",
     ),
     
+    # ========================================================
+    # COURSE CERTIFICATE
+    # ========================================================
+
+    path(
+        "<slug:course_slug>/certificate/",
+        views.course_certificate,
+        name="course_certificate",
+    ),
+
     path(
         "<slug:course_slug>/progress/",
         views.course_progress,
