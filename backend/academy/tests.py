@@ -4296,6 +4296,350 @@ class StudentAssessmentHistoryTests(TestCase):
         )
 
 
+    def _create_quiz_attempt(
+        self,
+        student,
+        score,
+        passed,
+        title="Python Quiz",
+    ):
+        from django.utils import timezone
+
+        quiz_activity = Activity.objects.create(
+            lesson=self.lesson,
+            title=title,
+            activity_type="quiz",
+            instructions="Answer the quiz.",
+            order=2,
+            max_score=10,
+            is_required=True,
+        )
+
+        quiz = Quiz.objects.create(
+            activity=quiz_activity,
+            passing_score=50,
+        )
+
+        question = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_text="What does print() do?",
+            order=1,
+            points=10,
+            is_active=True,
+        )
+
+        QuizChoice.objects.create(
+            question=question,
+            choice_text="Displays output",
+            order=1,
+            is_correct=True,
+        )
+
+        attempt = QuizAttempt.objects.create(
+            quiz=quiz,
+            student=student,
+            score=score,
+            passed=passed,
+            completed_at=timezone.now(),
+        )
+
+        return attempt
+
+    def test_assessment_center_includes_quiz_attempts(self):
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Submission")',
+            score=18,
+            status="graded",
+        )
+
+        attempt = self._create_quiz_attempt(
+            student=self.student,
+            score=10,
+            passed=True,
+            title="Python Fundamentals Quiz",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("student_assessment_history")
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.context["counts"]["all"],
+            2,
+        )
+
+        self.assertEqual(
+            response.context["counts"]["quizzes"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["counts"]["graded"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["counts"]["quiz_passed"],
+            1,
+        )
+
+        self.assertContains(
+            response,
+            submission.activity.title,
+        )
+
+        self.assertContains(
+            response,
+            attempt.quiz.activity.title,
+        )
+
+        self.assertContains(
+            response,
+            "Quiz Passed",
+        )
+
+        self.assertContains(
+            response,
+            "Review Attempt",
+        )
+
+    def test_assessment_center_quiz_status_filters(self):
+        passed_attempt = self._create_quiz_attempt(
+            student=self.student,
+            score=10,
+            passed=True,
+            title="Passing Quiz",
+        )
+
+        failed_attempt = self._create_quiz_attempt(
+            student=self.student,
+            score=0,
+            passed=False,
+            title="Failing Quiz",
+        )
+
+        self.client.force_login(self.student)
+
+        passed_response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "type": "quiz",
+                "status": "passed",
+            },
+        )
+
+        self.assertEqual(
+            passed_response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            passed_response,
+            passed_attempt.quiz.activity.title,
+        )
+
+        self.assertNotContains(
+            passed_response,
+            failed_attempt.quiz.activity.title,
+        )
+
+        failed_response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "type": "quiz",
+                "status": "not_passed",
+            },
+        )
+
+        self.assertEqual(
+            failed_response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            failed_response,
+            failed_attempt.quiz.activity.title,
+        )
+
+        self.assertNotContains(
+            failed_response,
+            passed_attempt.quiz.activity.title,
+        )
+
+    def test_assessment_center_type_filter_excludes_other_assessments(self):
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Submission only")',
+            score=15,
+            status="graded",
+        )
+
+        quiz_attempt = self._create_quiz_attempt(
+            student=self.student,
+            score=10,
+            passed=True,
+            title="Quiz only",
+        )
+
+        self.client.force_login(self.student)
+
+        submission_response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "type": "submission",
+            },
+        )
+
+        self.assertEqual(
+            submission_response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            submission_response,
+            "Submission only",
+        )
+
+        self.assertNotContains(
+            submission_response,
+            quiz_attempt.quiz.activity.title,
+        )
+
+        quiz_response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "type": "quiz",
+            },
+        )
+
+        self.assertEqual(
+            quiz_response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            quiz_response,
+            quiz_attempt.quiz.activity.title,
+        )
+
+        self.assertNotContains(
+            quiz_response,
+            "Submission only",
+        )
+
+    def test_assessment_center_course_filter(self):
+        other_course = Course.objects.create(
+            title="Django Assessment Course",
+            description="Another course",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Intermediate",
+        )
+
+        other_module = Module.objects.create(
+            course=other_course,
+            title="Web Development",
+            order=1,
+        )
+
+        other_lesson = Lesson.objects.create(
+            course=other_course,
+            module=other_module,
+            title="Django Basics",
+            content="Learn Django.",
+            order=1,
+        )
+
+        other_activity = Activity.objects.create(
+            lesson=other_lesson,
+            title="Django Assignment",
+            activity_type="assignment",
+            instructions="Build a Django feature.",
+            order=1,
+            max_score=25,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=other_course,
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Python submission")',
+            score=18,
+            status="graded",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=other_activity,
+            code="Django work",
+            score=20,
+            status="graded",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "course": other_course.slug,
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            response,
+            other_activity.title,
+        )
+
+        self.assertNotContains(
+            response,
+            self.activity.title,
+        )
+
+    def test_assessment_center_hides_other_student_quiz_attempts(self):
+        other_attempt = self._create_quiz_attempt(
+            student=self.other_student,
+            score=10,
+            passed=True,
+            title="Private Quiz Attempt",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("student_assessment_history")
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertNotContains(
+            response,
+            other_attempt.quiz.activity.title,
+        )
+
+
 class StudentResubmissionTests(TestCase):
     def setUp(self):
         self.student = User.objects.create_user(
