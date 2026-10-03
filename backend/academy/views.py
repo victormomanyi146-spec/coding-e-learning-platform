@@ -1403,6 +1403,7 @@ def student_assessment_history(request):
     ).count()
 
     graded_count = submissions_base.filter(
+        status="graded",
         score__isnull=False,
     ).count()
 
@@ -1451,6 +1452,7 @@ def student_assessment_history(request):
 
     elif status_filter == "graded":
         submissions = submissions.filter(
+            status="graded",
             score__isnull=False,
         )
 

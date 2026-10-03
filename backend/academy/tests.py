@@ -4615,6 +4615,49 @@ class StudentAssessmentHistoryTests(TestCase):
             self.activity.title,
         )
 
+    def test_assessment_center_graded_filter_excludes_correction_submissions(self):
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Graded work")',
+            score=18,
+            status="graded",
+        )
+
+        correction = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Needs correction")',
+            score=5,
+            status="correction",
+            feedback="Please fix this work.",
+        )
+
+        self.client.force_login(self.student)
+
+        response = self.client.get(
+            reverse("student_assessment_history"),
+            {
+                "status": "graded",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            response,
+            "Graded work",
+        )
+
+        self.assertNotContains(
+            response,
+            correction.code,
+        )
+
+
     def test_assessment_center_hides_other_student_quiz_attempts(self):
         other_attempt = self._create_quiz_attempt(
             student=self.other_student,
