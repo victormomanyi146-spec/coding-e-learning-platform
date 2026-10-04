@@ -718,9 +718,10 @@ class AcademyFlowTests(TestCase):
             302,
         )
 
-        notification = Notification.objects.get(
+        notification = Notification.objects.filter(
             recipient=self.student,
-        )
+            notification_type="graded",
+        ).get()
 
         self.assertEqual(
             notification.notification_type,
@@ -789,9 +790,10 @@ class AcademyFlowTests(TestCase):
             302,
         )
 
-        notification = Notification.objects.get(
+        notification = Notification.objects.filter(
             recipient=self.student,
-        )
+            notification_type="correction",
+        ).get()
 
         self.assertEqual(
             notification.notification_type,
@@ -2083,10 +2085,14 @@ class AcademyFlowTests(TestCase):
             200,
         )
 
-        self.assertContains(
-            history_response,
-            self.activity.title,
-            count=2,
+        history_titles = [
+            item["activity"].title
+            for item in history_response.context["history"]
+        ]
+
+        self.assertEqual(
+            history_titles.count(self.activity.title),
+            2,
         )
 
         self.assertContains(
@@ -7319,4 +7325,409 @@ class InstructorStudentAnalyticsTests(TestCase):
         self.assertEqual(
             response.context["total_attention"],
             2,
+        )
+
+
+# ============================================================
+# STUDENT NOTIFICATION CENTER
+# ============================================================
+
+class StudentNotificationCenterTests(TestCase):
+
+    def setUp(self):
+        self.student = User.objects.create_user(
+            username="notification_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.other_student = User.objects.create_user(
+            username="other_notification_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.course = Course.objects.create(
+            title="Notification Python",
+            description="Notification testing course",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            title="Notifications",
+            content="Test notifications.",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Notification Exercise",
+            activity_type="coding",
+            instructions="Complete the exercise.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+    def create_quiz(self):
+        self.activity.activity_type = "quiz"
+        self.activity.save(
+            update_fields=["activity_type"],
+        )
+
+        quiz = Quiz.objects.create(
+            activity=self.activity,
+            passing_score=50,
+        )
+
+        question = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_text="What is Python?",
+            order=1,
+            points=10,
+            is_active=True,
+        )
+
+        correct_choice = QuizChoice.objects.create(
+            question=question,
+            choice_text="A programming language",
+            is_correct=True,
+            order=1,
+        )
+
+        QuizChoice.objects.create(
+            question=question,
+            choice_text="A database",
+            is_correct=False,
+            order=2,
+        )
+
+        return quiz, question, correct_choice
+
+    def test_notification_center_requires_login(self):
+        response = self.client.get(
+            reverse("notification_list"),
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+    def test_notification_center_filters_by_status_and_type(self):
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="graded",
+            title="Unread Graded",
+            message="Graded update.",
+            is_read=False,
+        )
+
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="graded",
+            title="Read Graded",
+            message="Older graded update.",
+            is_read=True,
+        )
+
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="correction",
+            title="Unread Correction",
+            message="Correction required.",
+            is_read=False,
+        )
+
+        Notification.objects.create(
+            recipient=self.other_student,
+            notification_type="graded",
+            title="Private Other",
+            message="Other student notification.",
+        )
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse("notification_list")
+            + "?status=unread&type=graded"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        notification_titles = [
+            notification.title
+            for notification in response.context["page_obj"].object_list
+        ]
+
+        self.assertEqual(
+            notification_titles,
+            ["Unread Graded"],
+        )
+
+        self.assertEqual(
+            response.context["status_filter"],
+            "unread",
+        )
+
+        self.assertEqual(
+            response.context["type_filter"],
+            "graded",
+        )
+
+        self.assertEqual(
+            response.context["total_count"],
+            3,
+        )
+
+        self.assertEqual(
+            response.context["unread_count"],
+            2,
+        )
+
+        self.assertEqual(
+            response.context["read_count"],
+            1,
+        )
+
+    def test_notification_center_shows_summary_counts(self):
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="graded",
+            title="Unread One",
+            message="One.",
+            is_read=False,
+        )
+
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="general",
+            title="Unread Two",
+            message="Two.",
+            is_read=False,
+        )
+
+        Notification.objects.create(
+            recipient=self.student,
+            notification_type="correction",
+            title="Read One",
+            message="Three.",
+            is_read=True,
+        )
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse("notification_list"),
+        )
+
+        self.assertEqual(
+            response.context["total_count"],
+            3,
+        )
+
+        self.assertEqual(
+            response.context["unread_count"],
+            2,
+        )
+
+        self.assertEqual(
+            response.context["read_count"],
+            1,
+        )
+
+    def test_mark_all_notifications_read_only_updates_current_user(self):
+        own_unread = Notification.objects.create(
+            recipient=self.student,
+            notification_type="graded",
+            title="Own Unread",
+            message="Own notification.",
+            is_read=False,
+        )
+
+        other_unread = Notification.objects.create(
+            recipient=self.other_student,
+            notification_type="graded",
+            title="Other Unread",
+            message="Other notification.",
+            is_read=False,
+        )
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.post(
+            reverse("notification_mark_all_read"),
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+        own_unread.refresh_from_db()
+        other_unread.refresh_from_db()
+
+        self.assertTrue(
+            own_unread.is_read,
+        )
+
+        self.assertFalse(
+            other_unread.is_read,
+        )
+
+    def test_notification_center_paginates_results(self):
+        for index in range(16):
+            Notification.objects.create(
+                recipient=self.student,
+                notification_type="general",
+                title=f"Notification {index:02d}",
+                message="Pagination test.",
+            )
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse("notification_list") + "?page=2"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertTrue(
+            response.context["page_obj"].has_previous(),
+        )
+
+        self.assertEqual(
+            response.context["page_obj"].number,
+            2,
+        )
+
+        self.assertEqual(
+            len(response.context["notifications"]),
+            1,
+        )
+
+    def test_quiz_submission_creates_quiz_result_notification(self):
+        (
+            quiz,
+            question,
+            correct_choice,
+        ) = self.create_quiz()
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.post(
+            reverse(
+                "quiz_take",
+                args=[
+                    self.course.slug,
+                    self.lesson.id,
+                    self.activity.id,
+                ],
+            ),
+            {
+                f"question_{question.id}":
+                    str(correct_choice.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        attempt = (
+            QuizAttempt.objects
+            .filter(
+                quiz=quiz,
+                student=self.student,
+            )
+            .latest("created_at")
+        )
+
+        notification = Notification.objects.get(
+            recipient=self.student,
+            title="Quiz Result",
+        )
+
+        self.assertIn(
+            "passed",
+            notification.message.lower(),
+        )
+
+        self.assertEqual(
+            notification.link_url,
+            reverse(
+                "quiz_attempt_review",
+                args=[
+                    self.course.slug,
+                    attempt.id,
+                ],
+            ),
+        )
+
+        self.assertFalse(
+            notification.is_read,
+        )
+
+    def test_course_completion_creates_single_completion_notification(self):
+        from academy.views import _mark_progress
+
+        _mark_progress(
+            self.student,
+            self.activity,
+        )
+
+        notification = Notification.objects.get(
+            recipient=self.student,
+            title="Course Completed",
+        )
+
+        self.assertIn(
+            self.course.title,
+            notification.message,
+        )
+
+        self.assertEqual(
+            notification.link_url,
+            reverse(
+                "course_certificate",
+                args=[self.course.slug],
+            ),
+        )
+
+        _mark_progress(
+            self.student,
+            self.activity,
+        )
+
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.student,
+                title="Course Completed",
+            ).count(),
+            1,
         )

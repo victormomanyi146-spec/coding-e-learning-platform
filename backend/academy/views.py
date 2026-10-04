@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1212,20 +1213,147 @@ def submission_attachment(request, submission_id):
 @login_required
 def notification_list(request):
     """
-    Display notifications belonging only to the authenticated user.
+    Display a paginated notification center scoped to the
+    authenticated user.
+
+    Supported filters:
+    - status: all, unread, read
+    - type: all, graded, correction, general
     """
-    notifications = (
+    status_filter = (
+        request.GET.get("status", "all")
+        .strip()
+        .lower()
+    )
+
+    type_filter = (
+        request.GET.get("type", "all")
+        .strip()
+        .lower()
+    )
+
+    allowed_statuses = {
+        "all",
+        "unread",
+        "read",
+    }
+
+    allowed_types = {
+        "all",
+        "graded",
+        "correction",
+        "general",
+    }
+
+    if status_filter not in allowed_statuses:
+        status_filter = "all"
+
+    if type_filter not in allowed_types:
+        type_filter = "all"
+
+    all_notifications = (
         Notification.objects
         .filter(recipient=request.user)
-        .order_by("-created_at")
+        .order_by("-created_at", "-id")
+    )
+
+    total_count = all_notifications.count()
+
+    unread_count = all_notifications.filter(
+        is_read=False,
+    ).count()
+
+    read_count = all_notifications.filter(
+        is_read=True,
+    ).count()
+
+    notifications = all_notifications
+
+    if status_filter == "unread":
+        notifications = notifications.filter(
+            is_read=False,
+        )
+
+    elif status_filter == "read":
+        notifications = notifications.filter(
+            is_read=True,
+        )
+
+    if type_filter != "all":
+        notifications = notifications.filter(
+            notification_type=type_filter,
+        )
+
+    paginator = Paginator(
+        notifications,
+        15,
+    )
+
+    page_obj = paginator.get_page(
+        request.GET.get("page"),
     )
 
     return render(
         request,
         "academy/notifications.html",
         {
-            "notifications": notifications,
+            "notifications": page_obj,
+            "page_obj": page_obj,
+            "paginator": paginator,
+            "status_filter": status_filter,
+            "type_filter": type_filter,
+            "total_count": total_count,
+            "unread_count": unread_count,
+            "read_count": read_count,
         },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def notification_mark_all_read(request):
+    """
+    Mark every unread notification belonging to the authenticated
+    user as read.
+    """
+    Notification.objects.filter(
+        recipient=request.user,
+        is_read=False,
+    ).update(
+        is_read=True,
+    )
+
+    status_filter = (
+        request.POST.get("status", "all")
+        .strip()
+        .lower()
+    )
+
+    type_filter = (
+        request.POST.get("type", "all")
+        .strip()
+        .lower()
+    )
+
+    if status_filter not in {
+        "all",
+        "unread",
+        "read",
+    }:
+        status_filter = "all"
+
+    if type_filter not in {
+        "all",
+        "graded",
+        "correction",
+        "general",
+    }:
+        type_filter = "all"
+
+    return redirect(
+        f"{reverse('notification_list')}"
+        f"?status={status_filter}"
+        f"&type={type_filter}"
     )
 
 
@@ -1233,6 +1361,7 @@ def notification_list(request):
 def notification_read(request, notification_id):
     """
     Mark a notification as read and redirect to its target.
+    The notification must belong to the authenticated user.
     """
     notification = get_object_or_404(
         Notification,
@@ -1242,12 +1371,18 @@ def notification_read(request, notification_id):
 
     if not notification.is_read:
         notification.is_read = True
-        notification.save(update_fields=["is_read"])
+        notification.save(
+            update_fields=["is_read"],
+        )
 
     if notification.link_url:
-        return redirect(notification.link_url)
+        return redirect(
+            notification.link_url,
+        )
 
-    return redirect("notification_list")
+    return redirect(
+        "notification_list",
+    )
 
 
 
@@ -4006,6 +4141,35 @@ def quiz_take(
             ]
         )
 
+        quiz_review_url = reverse(
+            "quiz_attempt_review",
+            args=[
+                course.slug,
+                attempt.id,
+            ],
+        )
+
+        if passed:
+            quiz_notification_message = (
+                f'Your quiz "{activity.title}" was completed '
+                f"with {percentage}%. You passed."
+            )
+
+        else:
+            quiz_notification_message = (
+                f'Your quiz "{activity.title}" was completed '
+                f"with {percentage}%. "
+                f"The passing score is {quiz.passing_score}%."
+            )
+
+        Notification.objects.create(
+            recipient=request.user,
+            notification_type="general",
+            title="Quiz Result",
+            message=quiz_notification_message,
+            link_url=quiz_review_url,
+        )
+
         if passed:
 
             _mark_progress(
@@ -4637,11 +4801,72 @@ def _next_required_activity(student, course):
 # ============================================================
 
 def _mark_progress(student, activity):
-    """Mark an activity as completed for a student."""
-    ActivityCompletion.objects.get_or_create(
-        student=student,
-        activity=activity,
+    """
+    Mark an activity as completed for a student.
+
+    When the newly completed activity also completes every lesson
+    in the course, create one course-completion notification.
+    """
+    completion, created = (
+        ActivityCompletion.objects.get_or_create(
+            student=student,
+            activity=activity,
+        )
     )
+
+    if not created:
+        return completion
+
+    course = activity.lesson.course
+
+    lessons = Lesson.objects.filter(
+        course=course,
+    ).order_by(
+        "order",
+        "id",
+    )
+
+    total_lessons = lessons.count()
+
+    completed_lessons = sum(
+        1
+        for lesson in lessons
+        if _lesson_is_completed(
+            student,
+            lesson,
+        )
+    )
+
+    if (
+        total_lessons > 0
+        and completed_lessons == total_lessons
+    ):
+        certificate_url = reverse(
+            "course_certificate",
+            args=[course.slug],
+        )
+
+        already_notified = Notification.objects.filter(
+            recipient=student,
+            notification_type="general",
+            title="Course Completed",
+            link_url=certificate_url,
+        ).exists()
+
+        if not already_notified:
+            Notification.objects.create(
+                recipient=student,
+                notification_type="general",
+                title="Course Completed",
+                message=(
+                    f'Congratulations! You have completed '
+                    f'"{course.title}". '
+                    f"Your course certificate is now available."
+                ),
+                link_url=certificate_url,
+            )
+
+    return completion
 
 
 def _lesson_is_completed(student, lesson):
