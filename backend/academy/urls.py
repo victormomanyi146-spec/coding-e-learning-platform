@@ -103,6 +103,18 @@ urlpatterns = [
     ),
 
     path(
+        "instructor/students/",
+        views.instructor_student_progress_center,
+        name="instructor_student_progress_center",
+    ),
+
+    path(
+        "instructor/students/<int:student_id>/",
+        views.instructor_student_progress_detail,
+        name="instructor_student_progress_detail",
+    ),
+
+    path(
         "instructor/submissions/",
         views.instructor_submissions,
         name="instructor_submissions",

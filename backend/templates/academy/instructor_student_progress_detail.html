@@ -1,0 +1,624 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{ student.username }} Progress |
+        Coding E-Learning Platform
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+    <style>
+
+        .spd-summary {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin: 24px 0;
+        }
+
+        .spd-stat,
+        .spd-panel,
+        .spd-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .spd-stat strong {
+            display: block;
+            font-size: 26px;
+            margin-bottom: 5px;
+        }
+
+        .spd-stat span,
+        .spd-muted {
+            color: #6b7280;
+        }
+
+        .spd-filter {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 24px;
+        }
+
+        .spd-filter select {
+            min-width: 280px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            background: #ffffff;
+        }
+
+        .spd-course-card {
+            margin-bottom: 18px;
+        }
+
+        .spd-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .spd-head h2 {
+            margin-top: 0;
+            margin-bottom: 6px;
+        }
+
+        .spd-badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .spd-badge.completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .spd-badge.progress {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .spd-badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .spd-badge.attention {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .spd-badge.not-started {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .spd-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .spd-detail {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .spd-detail strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .spd-progress-track {
+            width: 100%;
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 14px;
+        }
+
+        .spd-progress-fill {
+            height: 100%;
+            background: #2563eb;
+            border-radius: 999px;
+        }
+
+        .spd-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .spd-list-item {
+            padding: 14px;
+            border-bottom: 1px solid #eef2f7;
+        }
+
+        .spd-list-item:last-child {
+            border-bottom: 0;
+        }
+
+        .spd-list-item strong,
+        .spd-list-item span,
+        .spd-list-item small {
+            display: block;
+        }
+
+        .spd-list-item span {
+            margin-top: 4px;
+            color: #475569;
+        }
+
+        .spd-list-item small {
+            margin-top: 5px;
+            color: #94a3b8;
+        }
+
+        .spd-empty {
+            color: #6b7280;
+            padding: 20px 0 5px;
+        }
+
+        @media (max-width: 1050px) {
+
+            .spd-summary,
+            .spd-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+        }
+
+        @media (max-width: 700px) {
+
+            .spd-summary,
+            .spd-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .spd-head {
+                flex-direction: column;
+            }
+
+            .spd-filter select {
+                width: 100%;
+                min-width: 0;
+            }
+
+        }
+
+        @media (max-width: 500px) {
+
+            .spd-summary,
+            .spd-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+{% include "academy/instructor_nav.html" %}
+
+<header class="page-header">
+
+    <div class="container">
+
+        <h1>{{ student.username }}</h1>
+
+        <p>
+            Instructor view of learner progress and assessment activity.
+        </p>
+
+    </div>
+
+</header>
+
+<main class="container">
+
+    <div class="page-actions">
+
+        <a href="{% url 'instructor_student_progress_center' %}">
+            &larr; Student Progress Center
+        </a>
+
+    </div>
+
+    <section class="spd-summary">
+
+        <div class="spd-stat">
+            <strong>{{ course_rows|length }}</strong>
+            <span>Courses in View</span>
+        </div>
+
+        <div class="spd-stat">
+            <strong>{{ overall_progress }}%</strong>
+            <span>Average Progress</span>
+        </div>
+
+        <div class="spd-stat">
+
+            <strong>
+
+                {% if overall_score is not None %}
+                    {{ overall_score }}%
+                {% else %}
+                    ?
+                {% endif %}
+
+            </strong>
+
+            <span>Average Score</span>
+
+        </div>
+
+        <div class="spd-stat">
+            <strong>{{ total_graded_submissions }}</strong>
+            <span>Graded Submissions</span>
+        </div>
+
+        <div class="spd-stat">
+            <strong>{{ total_quiz_attempts }}</strong>
+            <span>Quiz Attempts</span>
+        </div>
+
+        <div class="spd-stat">
+            <strong>
+                {{ total_corrections }}
+            </strong>
+            <span>Needs Correction</span>
+        </div>
+
+    </section>
+
+    <section class="spd-panel">
+
+        <form
+            method="get"
+            class="spd-filter"
+        >
+
+            <div>
+
+                <label for="course">
+                    <strong>Course</strong>
+                </label>
+
+                <br>
+
+                <select
+                    id="course"
+                    name="course"
+                >
+
+                    <option value="all">
+                        All Courses
+                    </option>
+
+                    {% for course in courses %}
+
+                        <option
+                            value="{{ course.id }}"
+                            {% if selected_course and selected_course.id == course.id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ course.title }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <button type="submit">
+                Apply Filter
+            </button>
+
+        </form>
+
+        <p class="spd-muted">
+
+            {% if selected_course %}
+                Showing {{ student.username }} in
+                <strong>{{ selected_course.title }}</strong>.
+            {% else %}
+                Showing {{ student.username }} across all enrolled courses.
+            {% endif %}
+
+        </p>
+
+    </section>
+
+    <section>
+
+        {% if course_rows %}
+
+            {% for row in course_rows %}
+
+                <article class="spd-card spd-course-card">
+
+                    <div class="spd-head">
+
+                        <div>
+
+                            <h2>
+                                {{ row.course.title }}
+                            </h2>
+
+                            <p class="spd-muted">
+
+                                Level:
+                                {{ row.course.level }}
+
+                                ?
+
+                                Duration:
+                                {{ row.course.duration }}
+
+                            </p>
+
+                        </div>
+
+                        <span class="spd-badge {{ row.status_class }}">
+                            {{ row.status_label }}
+                        </span>
+
+                    </div>
+
+                    <div class="spd-progress-track">
+
+                        <div
+                            class="spd-progress-fill"
+                            style="width: {{ row.progress.lesson_percentage }}%;"
+                        ></div>
+
+                    </div>
+
+                    <p class="spd-muted">
+
+                        {{ row.progress.lessons_completed }}
+                        /
+                        {{ row.progress.lessons_total }}
+                        lessons completed
+                        ?
+                        {{ row.progress.lesson_percentage }}%
+
+                    </p>
+
+                    <div class="spd-grid">
+
+                        <div class="spd-detail">
+                            <strong>Activities</strong>
+                            {{ row.progress.activities_completed }}/{{ row.progress.activities_total }}
+                        </div>
+
+                        <div class="spd-detail">
+                            <strong>Activity Progress</strong>
+                            {{ row.progress.activity_percentage }}%
+                        </div>
+
+                        <div class="spd-detail">
+                            <strong>Average Score</strong>
+                            {% if row.progress.average_score is not None %}
+                                {{ row.progress.average_score }}%
+                            {% else %}
+                                Not graded
+                            {% endif %}
+                        </div>
+
+                        <div class="spd-detail">
+                            <strong>Pending</strong>
+                            {{ row.pending_count }}
+                        </div>
+
+                        <div class="spd-detail">
+                            <strong>Correction</strong>
+                            {{ row.correction_count }}
+                        </div>
+
+                        <div class="spd-detail">
+                            <strong>Errors</strong>
+                            {{ row.error_count }}
+                        </div>
+
+                    </div>
+
+                    <p class="spd-muted">
+
+                        {{ row.graded_submission_count }}
+                        graded submission{{ row.graded_submission_count|pluralize }}
+
+                        ?
+
+                        {{ row.quiz_attempt_count }}
+                        completed quiz attempt{{ row.quiz_attempt_count|pluralize }}
+
+                    </p>
+
+                </article>
+
+            {% endfor %}
+
+        {% else %}
+
+            <article class="spd-card">
+
+                <h2>No course data</h2>
+
+                <p class="spd-muted">
+                    This learner has no course enrollment matching the
+                    selected filter.
+                </p>
+
+            </article>
+
+        {% endif %}
+
+    </section>
+
+    <section class="spd-card">
+
+        <div class="section-heading">
+
+            <h2>Recent Submissions</h2>
+
+            <p>
+                Latest submission activity for the selected scope.
+            </p>
+
+        </div>
+
+        {% if recent_submissions %}
+
+            <div class="spd-list">
+
+                {% for submission in recent_submissions %}
+
+                    <div class="spd-list-item">
+
+                        <strong>
+                            {{ submission.activity.title }}
+                        </strong>
+
+                        <span>
+                            {{ submission.activity.lesson.course.title }}
+                            ?
+                            {{ submission.activity.lesson.title }}
+                        </span>
+
+                        <small>
+                            {{ submission.submitted_at|date:"M d, Y H:i" }}
+
+                            ?
+
+                            {% if submission.status == "correction" %}
+                                Needs Correction
+                            {% elif submission.status == "error" %}
+                                Execution Error
+                            {% elif submission.score is not None %}
+                                Graded
+                            {% else %}
+                                Pending Review
+                            {% endif %}
+
+                            {% if submission.score is not None %}
+                                ?
+                                {{ submission.score }}/{{ submission.activity.max_score }}
+                            {% endif %}
+                        </small>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <p class="spd-empty">
+                No submissions in this view.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+    <section class="spd-card">
+
+        <div class="section-heading">
+
+            <h2>Recent Quiz Attempts</h2>
+
+            <p>
+                Latest completed quiz attempts for the selected scope.
+            </p>
+
+        </div>
+
+        {% if recent_quiz_attempts %}
+
+            <div class="spd-list">
+
+                {% for attempt in recent_quiz_attempts %}
+
+                    <div class="spd-list-item">
+
+                        <strong>
+                            {{ attempt.quiz.activity.title }}
+                        </strong>
+
+                        <span>
+                            {{ attempt.quiz.activity.lesson.course.title }}
+                            ?
+                            {{ attempt.quiz.activity.lesson.title }}
+                        </span>
+
+                        <small>
+
+                            {{ attempt.completed_at|date:"M d, Y H:i" }}
+
+                            ?
+
+                            {% if attempt.passed %}
+                                Quiz Passed
+                            {% else %}
+                                Quiz Not Passed
+                            {% endif %}
+
+                            ?
+                            Score: {{ attempt.score }}
+
+                        </small>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <p class="spd-empty">
+                No completed quiz attempts in this view.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+</main>
+
+</body>
+
+</html>
