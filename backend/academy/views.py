@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from datetime import timedelta
 
 import os
 import subprocess
@@ -5614,5 +5615,750 @@ def instructor_student_progress_detail(request, student_id):
             "total_quiz_attempts": total_quiz_attempts,
             "recent_submissions": recent_submissions,
             "recent_quiz_attempts": recent_quiz_attempts,
+        },
+    )
+# ============================================================
+# INSTRUCTOR STUDENT ANALYTICS
+# ============================================================
+
+@login_required
+def instructor_student_analytics(request):
+    """
+    Instructor-facing analytics workspace.
+
+    Analytics are derived from existing enrollments, progress,
+    submissions and quiz attempts. No new database model is used.
+    """
+
+    if not (
+        request.user.is_staff
+        or getattr(request.user, "role", None) == "INSTRUCTOR"
+    ):
+        return HttpResponse(
+            "You do not have permission to access this page.",
+            status=403,
+        )
+
+    courses = list(
+        Course.objects
+        .all()
+        .order_by("title", "id")
+    )
+
+    course_filter = request.GET.get(
+        "course",
+        "all",
+    ).strip()
+
+    selected_course = None
+
+    if course_filter not in {"", "all"}:
+        try:
+            selected_course = next(
+                (
+                    course
+                    for course in courses
+                    if course.id == int(course_filter)
+                ),
+                None,
+            )
+        except (TypeError, ValueError):
+            selected_course = None
+
+    if selected_course is None:
+        course_filter = "all"
+
+    selected_courses = (
+        [selected_course]
+        if selected_course is not None
+        else courses
+    )
+
+    # --------------------------------------------------------
+    # Course analytics
+    # --------------------------------------------------------
+
+    course_rows = []
+
+    total_enrollments = 0
+    total_completed_enrollments = 0
+    total_attention = 0
+
+    all_progress_values = []
+    all_score_values = []
+
+    for course in selected_courses:
+
+        enrollments = list(
+            Enrollment.objects
+            .filter(course=course)
+            .select_related("student")
+            .order_by("student__username", "student_id")
+        )
+
+        progress_rows = []
+
+        for enrollment in enrollments:
+
+            student = enrollment.student
+
+            progress = _course_progress(
+                student,
+                course,
+            )
+
+            pending_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="submitted",
+                score__isnull=True,
+            ).count()
+
+            correction_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="correction",
+            ).count()
+
+            error_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="error",
+            ).count()
+
+            latest_submission = (
+                Submission.objects
+                .filter(
+                    student=student,
+                    activity__lesson__course=course,
+                )
+                .order_by("-submitted_at", "-id")
+                .first()
+            )
+
+            latest_quiz_attempt = (
+                QuizAttempt.objects
+                .filter(
+                    student=student,
+                    quiz__activity__lesson__course=course,
+                    completed_at__isnull=False,
+                )
+                .order_by("-completed_at", "-id")
+                .first()
+            )
+
+            latest_assessment_at = None
+
+            if latest_submission is not None:
+                latest_assessment_at = (
+                    latest_submission.submitted_at
+                )
+
+            if latest_quiz_attempt is not None:
+                quiz_time = (
+                    latest_quiz_attempt.completed_at
+                    or latest_quiz_attempt.created_at
+                )
+
+                if (
+                    latest_assessment_at is None
+                    or quiz_time > latest_assessment_at
+                ):
+                    latest_assessment_at = quiz_time
+
+            progress_rows.append(
+                {
+                    "student": student,
+                    "progress": progress,
+                    "pending_count": pending_count,
+                    "correction_count": correction_count,
+                    "error_count": error_count,
+                    "latest_assessment_at": latest_assessment_at,
+                }
+            )
+
+        progress_values = [
+            row["progress"]["lesson_percentage"]
+            for row in progress_rows
+        ]
+
+        score_values = [
+            row["progress"]["average_score"]
+            for row in progress_rows
+            if row["progress"]["average_score"] is not None
+        ]
+
+        enrolled_count = len(enrollments)
+
+        started_count = sum(
+            1
+            for row in progress_rows
+            if (
+                row["progress"]["lessons_completed"] > 0
+                or row["progress"]["activities_completed"] > 0
+                or row["progress"]["average_score"] is not None
+            )
+        )
+
+        completed_count = sum(
+            1
+            for row in progress_rows
+            if row["progress"]["lesson_percentage"] == 100
+        )
+
+        attention_count = 0
+
+        for row in progress_rows:
+
+            needs_attention = (
+                row["pending_count"] > 0
+                or row["correction_count"] > 0
+                or row["error_count"] > 0
+            )
+
+            if (
+                not needs_attention
+                and row["progress"]["lesson_percentage"] < 25
+            ):
+
+                latest_at = row["latest_assessment_at"]
+
+                if latest_at is None:
+                    needs_attention = True
+
+                else:
+                    age_days = (
+                        timezone.now() - latest_at
+                    ).days
+
+                    if age_days >= 14:
+                        needs_attention = True
+
+            if needs_attention:
+                attention_count += 1
+
+        graded_submission_count = Submission.objects.filter(
+            activity__lesson__course=course,
+            status="graded",
+            score__isnull=False,
+        ).count()
+
+        pending_submission_count = Submission.objects.filter(
+            activity__lesson__course=course,
+            status="submitted",
+            score__isnull=True,
+        ).count()
+
+        correction_submission_count = Submission.objects.filter(
+            activity__lesson__course=course,
+            status="correction",
+        ).count()
+
+        error_submission_count = Submission.objects.filter(
+            activity__lesson__course=course,
+            status="error",
+        ).count()
+
+        quiz_attempts = QuizAttempt.objects.filter(
+            quiz__activity__lesson__course=course,
+            completed_at__isnull=False,
+        )
+
+        completed_quiz_attempt_count = quiz_attempts.count()
+
+        passed_quiz_attempt_count = quiz_attempts.filter(
+            passed=True,
+        ).count()
+
+        quiz_pass_rate = (
+            round(
+                (
+                    passed_quiz_attempt_count
+                    / completed_quiz_attempt_count
+                ) * 100,
+                1,
+            )
+            if completed_quiz_attempt_count
+            else None
+        )
+
+        completion_rate = (
+            round(
+                (completed_count / enrolled_count) * 100,
+                1,
+            )
+            if enrolled_count
+            else 0
+        )
+
+        average_progress = (
+            round(
+                sum(progress_values)
+                / len(progress_values),
+                1,
+            )
+            if progress_values
+            else 0
+        )
+
+        average_score = (
+            round(
+                sum(score_values)
+                / len(score_values),
+                1,
+            )
+            if score_values
+            else None
+        )
+
+        course_rows.append(
+            {
+                "course": course,
+                "enrolled_count": enrolled_count,
+                "started_count": started_count,
+                "completed_count": completed_count,
+                "completion_rate": completion_rate,
+                "average_progress": average_progress,
+                "average_score": average_score,
+                "graded_submission_count": graded_submission_count,
+                "pending_submission_count": pending_submission_count,
+                "correction_submission_count": (
+                    correction_submission_count
+                ),
+                "error_submission_count": error_submission_count,
+                "completed_quiz_attempt_count": (
+                    completed_quiz_attempt_count
+                ),
+                "passed_quiz_attempt_count": (
+                    passed_quiz_attempt_count
+                ),
+                "quiz_pass_rate": quiz_pass_rate,
+                "attention_count": attention_count,
+            }
+        )
+
+        total_enrollments += enrolled_count
+        total_completed_enrollments += completed_count
+
+        all_progress_values.extend(progress_values)
+        all_score_values.extend(score_values)
+
+    # --------------------------------------------------------
+    # Overall summary
+    # --------------------------------------------------------
+
+    selected_student_count = (
+        Enrollment.objects
+        .filter(course__in=selected_courses)
+        .values("student_id")
+        .distinct()
+        .count()
+        if selected_courses
+        else 0
+    )
+
+    overall_completion_rate = (
+        round(
+            (
+                total_completed_enrollments
+                / total_enrollments
+            ) * 100,
+            1,
+        )
+        if total_enrollments
+        else 0
+    )
+
+    overall_average_progress = (
+        round(
+            sum(all_progress_values)
+            / len(all_progress_values),
+            1,
+        )
+        if all_progress_values
+        else 0
+    )
+
+    overall_average_score = (
+        round(
+            sum(all_score_values)
+            / len(all_score_values),
+            1,
+        )
+        if all_score_values
+        else None
+    )
+
+    # --------------------------------------------------------
+    # Weekly assessment performance trend
+    # --------------------------------------------------------
+
+    trend_buckets = {}
+
+    if selected_courses:
+
+        submission_query = (
+            Submission.objects
+            .filter(
+                activity__lesson__course__in=selected_courses,
+                status="graded",
+                score__isnull=False,
+            )
+            .select_related(
+                "activity",
+                "activity__lesson",
+            )
+            .order_by(
+                "-submitted_at",
+                "-id",
+            )[:250]
+        )
+
+        for submission in submission_query:
+
+            max_score = submission.activity.max_score or 0
+
+            if max_score <= 0:
+                continue
+
+            percentage = (
+                float(submission.score)
+                / float(max_score)
+            ) * 100
+
+            local_dt = timezone.localtime(
+                submission.submitted_at,
+            )
+
+            week_start = (
+                local_dt.date()
+                - timedelta(days=local_dt.weekday())
+            )
+
+            bucket = trend_buckets.setdefault(
+                week_start,
+                {
+                    "scores": [],
+                    "submission_count": 0,
+                    "quiz_count": 0,
+                },
+            )
+
+            bucket["scores"].append(percentage)
+            bucket["submission_count"] += 1
+
+        quiz_query = (
+            QuizAttempt.objects
+            .filter(
+                quiz__activity__lesson__course__in=selected_courses,
+                completed_at__isnull=False,
+                score__isnull=False,
+            )
+            .select_related(
+                "quiz",
+                "quiz__activity",
+                "quiz__activity__lesson",
+            )
+            .prefetch_related(
+                "quiz__questions",
+            )
+            .order_by(
+                "-completed_at",
+                "-id",
+            )[:250]
+        )
+
+        for attempt in quiz_query:
+
+            total_points = sum(
+                question.points
+                for question in attempt.quiz.questions.all()
+                if question.is_active
+            )
+
+            if total_points <= 0:
+                continue
+
+            percentage = (
+                float(attempt.score)
+                / float(total_points)
+            ) * 100
+
+            local_dt = timezone.localtime(
+                attempt.completed_at,
+            )
+
+            week_start = (
+                local_dt.date()
+                - timedelta(days=local_dt.weekday())
+            )
+
+            bucket = trend_buckets.setdefault(
+                week_start,
+                {
+                    "scores": [],
+                    "submission_count": 0,
+                    "quiz_count": 0,
+                },
+            )
+
+            bucket["scores"].append(percentage)
+            bucket["quiz_count"] += 1
+
+    trend_rows = []
+
+    for week_start in sorted(
+        trend_buckets.keys(),
+        reverse=True,
+    )[:8]:
+
+        bucket = trend_buckets[week_start]
+
+        week_end = week_start + timedelta(days=6)
+
+        trend_rows.append(
+            {
+                "label": (
+                    f"{week_start.strftime('%b %d')} - "
+                    f"{week_end.strftime('%b %d, %Y')}"
+                ),
+                "average_score": round(
+                    sum(bucket["scores"])
+                    / len(bucket["scores"]),
+                    1,
+                ),
+                "assessment_count": len(
+                    bucket["scores"]
+                ),
+                "submission_count": bucket[
+                    "submission_count"
+                ],
+                "quiz_count": bucket[
+                    "quiz_count"
+                ],
+            }
+        )
+
+    # --------------------------------------------------------
+    # Learners needing attention
+    # --------------------------------------------------------
+
+    attention_students = []
+
+    student_ids = (
+        Enrollment.objects
+        .filter(course__in=selected_courses)
+        .values_list("student_id", flat=True)
+        .distinct()
+        if selected_courses
+        else []
+    )
+
+    for student in (
+        User.objects
+        .filter(
+            id__in=student_ids,
+            role="STUDENT",
+        )
+        .order_by(
+            "username",
+            "id",
+        )
+    ):
+
+        student_course_rows = []
+
+        for course in selected_courses:
+
+            if not Enrollment.objects.filter(
+                student=student,
+                course=course,
+            ).exists():
+                continue
+
+            progress = _course_progress(
+                student,
+                course,
+            )
+
+            pending_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="submitted",
+                score__isnull=True,
+            ).count()
+
+            correction_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="correction",
+            ).count()
+
+            error_count = Submission.objects.filter(
+                student=student,
+                activity__lesson__course=course,
+                status="error",
+            ).count()
+
+            latest_submission = (
+                Submission.objects
+                .filter(
+                    student=student,
+                    activity__lesson__course=course,
+                )
+                .order_by(
+                    "-submitted_at",
+                    "-id",
+                )
+                .first()
+            )
+
+            latest_quiz_attempt = (
+                QuizAttempt.objects
+                .filter(
+                    student=student,
+                    quiz__activity__lesson__course=course,
+                    completed_at__isnull=False,
+                )
+                .order_by(
+                    "-completed_at",
+                    "-id",
+                )
+                .first()
+            )
+
+            latest_at = None
+
+            if latest_submission is not None:
+                latest_at = latest_submission.submitted_at
+
+            if latest_quiz_attempt is not None:
+
+                quiz_at = (
+                    latest_quiz_attempt.completed_at
+                    or latest_quiz_attempt.created_at
+                )
+
+                if (
+                    latest_at is None
+                    or quiz_at > latest_at
+                ):
+                    latest_at = quiz_at
+
+            reasons = []
+
+            if correction_count:
+                reasons.append(
+                    "Needs Correction"
+                )
+
+            if error_count:
+                reasons.append(
+                    "Execution Error"
+                )
+
+            if pending_count:
+                reasons.append(
+                    "Pending Review"
+                )
+
+            if (
+                progress["lesson_percentage"] < 25
+                and not reasons
+            ):
+
+                if latest_at is None:
+                    reasons.append(
+                        "Not Started"
+                    )
+
+                else:
+
+                    age_days = (
+                        timezone.now()
+                        - latest_at
+                    ).days
+
+                    if age_days >= 14:
+                        reasons.append(
+                            "Low Progress / Inactive"
+                        )
+
+            if reasons:
+                student_course_rows.append(
+                    {
+                        "course": course,
+                        "progress": progress,
+                        "pending_count": pending_count,
+                        "correction_count": correction_count,
+                        "error_count": error_count,
+                        "reasons": reasons,
+                    }
+                )
+
+        if student_course_rows:
+
+            attention_students.append(
+                {
+                    "student": student,
+                    "course_count": len(
+                        student_course_rows
+                    ),
+                    "course_rows": student_course_rows,
+                    "detail_url": (
+                        reverse(
+                            "instructor_student_progress_detail",
+                            args=[student.id],
+                        )
+                        + (
+                            f"?course={selected_course.id}"
+                            if selected_course is not None
+                            else ""
+                        )
+                    ),
+                }
+            )
+
+    attention_students.sort(
+        key=lambda item: (
+            -sum(
+                row["correction_count"]
+                + row["error_count"]
+                + row["pending_count"]
+                for row in item["course_rows"]
+            ),
+            item["student"].username.lower(),
+        )
+    )
+
+    total_attention_count = len(
+        attention_students
+    )
+
+    attention_students = attention_students[:20]
+
+    return render(
+        request,
+        "academy/instructor_student_analytics.html",
+        {
+            "courses": courses,
+            "selected_course": selected_course,
+            "course_filter": course_filter,
+            "course_rows": course_rows,
+            "selected_student_count": selected_student_count,
+            "total_enrollments": total_enrollments,
+            "overall_completion_rate": (
+                overall_completion_rate
+            ),
+            "overall_average_progress": (
+                overall_average_progress
+            ),
+            "overall_average_score": (
+                overall_average_score
+            ),
+            "total_attention": total_attention,
+            "trend_rows": trend_rows,
+            "attention_students": attention_students,
+            "total_attention": total_attention_count,
         },
     )

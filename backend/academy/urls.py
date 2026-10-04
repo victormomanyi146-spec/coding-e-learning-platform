@@ -109,6 +109,12 @@ urlpatterns = [
     ),
 
     path(
+        "instructor/analytics/",
+        views.instructor_student_analytics,
+        name="instructor_student_analytics",
+    ),
+
+    path(
         "instructor/students/<int:student_id>/",
         views.instructor_student_progress_detail,
         name="instructor_student_progress_detail",
@@ -245,5 +251,3 @@ path(
         name="course_detail",
     ),
 ]
-
-
