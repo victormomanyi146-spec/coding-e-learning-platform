@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from academy.models import (
     Quiz,
     QuizQuestion,
@@ -6716,4 +6718,605 @@ class InstructorStudentProgressCenterTests(TestCase):
         self.assertEqual(
             response.status_code,
             404,
+        )
+
+# ============================================================
+# INSTRUCTOR STUDENT ANALYTICS TESTS
+# ============================================================
+
+class InstructorStudentAnalyticsTests(TestCase):
+
+    def setUp(self):
+
+        from datetime import timedelta
+        from django.utils import timezone
+
+        self.student = User.objects.create_user(
+            username="analytics_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.second_student = User.objects.create_user(
+            username="analytics_student_two",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.unenrolled_student = User.objects.create_user(
+            username="analytics_unenrolled",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="analytics_instructor",
+            password="StrongPass123!",
+            role="INSTRUCTOR",
+        )
+
+        self.course = Course.objects.create(
+            title="Analytics Python",
+            description="Analytics course.",
+            instructor="Instructor",
+            duration="8 weeks",
+            level="Beginner",
+        )
+
+        self.second_course = Course.objects.create(
+            title="Analytics Django",
+            description="Second analytics course.",
+            instructor="Instructor",
+            duration="6 weeks",
+            level="Intermediate",
+        )
+
+        module = Module.objects.create(
+            course=self.course,
+            title="Analytics Fundamentals",
+            order=1,
+        )
+
+        lesson = Lesson.objects.create(
+            course=self.course,
+            module=module,
+            title="Analytics Lesson",
+            content="Analytics content.",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=lesson,
+            title="Analytics Exercise",
+            activity_type="coding",
+            instructions="Write Python code.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        quiz_activity = Activity.objects.create(
+            lesson=lesson,
+            title="Analytics Quiz",
+            activity_type="quiz",
+            instructions="Complete the quiz.",
+            order=2,
+            max_score=10,
+            is_required=True,
+        )
+
+        self.quiz = Quiz.objects.create(
+            activity=quiz_activity,
+            passing_score=50,
+        )
+
+        question = QuizQuestion.objects.create(
+            quiz=self.quiz,
+            question_text="What does print() do?",
+            order=1,
+            points=10,
+            is_active=True,
+        )
+
+        QuizChoice.objects.create(
+            question=question,
+            choice_text="Displays output",
+            order=1,
+            is_correct=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        Enrollment.objects.create(
+            student=self.second_student,
+            course=self.course,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.second_course,
+        )
+
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        graded_submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("analytics")',
+            status="graded",
+            score=18,
+            feedback="Good work.",
+        )
+
+        now = timezone.now()
+
+        # Put the submission three days into the previous week.
+        submission_local_date = (
+            timezone.localtime(now).date()
+            - timedelta(days=10)
+        )
+
+        submission_datetime = timezone.make_aware(
+            datetime.combine(
+                submission_local_date,
+                datetime.min.time(),
+            ),
+            timezone.get_current_timezone(),
+        )
+
+        graded_submission.submitted_at = submission_datetime
+        graded_submission.save(
+            update_fields=["submitted_at"],
+        )
+
+        pending_submission = Submission.objects.create(
+            student=self.second_student,
+            activity=self.activity,
+            code='print("pending")',
+            status="submitted",
+        )
+
+        pending_submission.submitted_at = (
+            now - timedelta(days=1)
+        )
+
+        pending_submission.save(
+            update_fields=["submitted_at"],
+        )
+
+        QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.student,
+            score=10,
+            passed=True,
+            completed_at=(
+                now - timedelta(days=3)
+            ),
+        )
+
+    def test_analytics_requires_login(self):
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+    def test_student_cannot_access_analytics(self):
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_instructor_can_view_course_analytics(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(response.context["course_rows"]),
+            2,
+        )
+
+        python_row = next(
+            row
+            for row in response.context["course_rows"]
+            if row["course"].id == self.course.id
+        )
+
+        self.assertEqual(
+            python_row["enrolled_count"],
+            2,
+        )
+
+        self.assertEqual(
+            python_row["completed_count"],
+            0,
+        )
+
+        self.assertEqual(
+            python_row["completion_rate"],
+            0.0,
+        )
+
+        self.assertEqual(
+            python_row["average_progress"],
+            0.0,
+        )
+
+        self.assertEqual(
+            python_row["average_score"],
+            95.0,
+        )
+
+        self.assertEqual(
+            python_row["started_count"],
+            1,
+        )
+
+        self.assertEqual(
+            python_row["graded_submission_count"],
+            1,
+        )
+
+        self.assertEqual(
+            python_row["pending_submission_count"],
+            1,
+        )
+
+        self.assertEqual(
+            python_row["completed_quiz_attempt_count"],
+            1,
+        )
+
+        self.assertEqual(
+            python_row["passed_quiz_attempt_count"],
+            1,
+        )
+
+        self.assertEqual(
+            python_row["quiz_pass_rate"],
+            100.0,
+        )
+
+    def test_course_filter_scopes_analytics(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(response.context["course_rows"]),
+            1,
+        )
+
+        self.assertEqual(
+            response.context["course_rows"][0]["course"].id,
+            self.course.id,
+        )
+
+        self.assertEqual(
+            response.context["selected_student_count"],
+            2,
+        )
+
+    def test_assessment_trend_contains_submission_and_quiz(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        trend_rows = response.context[
+            "trend_rows"
+        ]
+
+        self.assertGreaterEqual(
+            len(trend_rows),
+            1,
+        )
+
+        total_assessments = sum(
+            row["assessment_count"]
+            for row in trend_rows
+        )
+
+        self.assertEqual(
+            total_assessments,
+            2,
+        )
+
+        self.assertEqual(
+            sum(
+                row["submission_count"]
+                for row in trend_rows
+            ),
+            1,
+        )
+
+        self.assertEqual(
+            sum(
+                row["quiz_count"]
+                for row in trend_rows
+            ),
+            1,
+        )
+
+    def test_pending_work_flags_learner_for_attention(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        attention = response.context[
+            "attention_students"
+        ]
+
+        usernames = {
+            item["student"].username
+            for item in attention
+        }
+
+        self.assertIn(
+            "analytics_student_two",
+            usernames,
+        )
+
+        pending_item = next(
+            item
+            for item in attention
+            if item["student"].username
+            == "analytics_student_two"
+        )
+
+        reasons = {
+            reason
+            for row in pending_item["course_rows"]
+            for reason in row["reasons"]
+        }
+
+        self.assertIn(
+            "Pending Review",
+            reasons,
+        )
+
+    def test_new_unstarted_learner_is_flagged(self):
+
+        new_course = Course.objects.create(
+            title="Analytics New Course",
+            description="New course.",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        Enrollment.objects.create(
+            student=self.second_student,
+            course=new_course,
+        )
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": str(new_course.id),
+            },
+        )
+
+        attention = response.context[
+            "attention_students"
+        ]
+
+        self.assertEqual(
+            len(attention),
+            1,
+        )
+
+        self.assertEqual(
+            attention[0]["student"].username,
+            "analytics_student_two",
+        )
+
+        self.assertIn(
+            "Not Started",
+            attention[0]["course_rows"][0]["reasons"],
+        )
+
+    def test_unenrolled_student_is_not_in_analytics_population(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.context["selected_student_count"],
+            2,
+        )
+
+        self.assertEqual(
+            response.context["total_enrollments"],
+            2,
+        )
+
+        usernames = {
+            student.username
+            for student in User.objects.filter(
+                enrollments__course=self.course,
+            ).distinct()
+        }
+
+        self.assertNotIn(
+            self.unenrolled_student.username,
+            usernames,
+        )
+
+    def test_invalid_course_filter_falls_back_to_all(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            ),
+            {
+                "course": "not-a-number",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertIsNone(
+            response.context["selected_course"],
+        )
+
+        self.assertEqual(
+            response.context["course_filter"],
+            "all",
+        )
+
+
+    def test_attention_summary_counts_unique_learners(self):
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("pending")',
+            status="submitted",
+        )
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_analytics",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        attention = response.context[
+            "attention_students"
+        ]
+
+        analytics_student = [
+            item
+            for item in attention
+            if item["student"].username
+            == "analytics_student"
+        ]
+
+        self.assertEqual(
+            len(analytics_student),
+            1,
+        )
+
+        self.assertEqual(
+            len(
+                analytics_student[0]["course_rows"]
+            ),
+            2,
+        )
+
+        self.assertEqual(
+            response.context["total_attention"],
+            len(attention),
+        )
+
+        self.assertEqual(
+            response.context["total_attention"],
+            2,
         )
