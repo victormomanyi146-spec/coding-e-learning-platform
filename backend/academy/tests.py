@@ -6304,3 +6304,416 @@ class InstructorAssessmentCenterTests(TestCase):
             response.context["selected_course"].id,
             other_course.id,
         )
+
+# ============================================================
+# INSTRUCTOR STUDENT PROGRESS CENTER TESTS
+# ============================================================
+
+class InstructorStudentProgressCenterTests(TestCase):
+
+    def setUp(self):
+
+        self.student = User.objects.create_user(
+            username="progress_student",
+            password="StrongPass123!",
+            role="STUDENT",
+            email="student@example.com",
+        )
+
+        self.second_student = User.objects.create_user(
+            username="progress_student_two",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="progress_instructor",
+            password="StrongPass123!",
+            role="INSTRUCTOR",
+        )
+
+        self.unenrolled_student = User.objects.create_user(
+            username="unenrolled_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.course = Course.objects.create(
+            title="Progress Python",
+            description="Progress tracking course.",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.second_course = Course.objects.create(
+            title="Progress Django",
+            description="Second progress course.",
+            instructor="Instructor",
+            duration="6 weeks",
+            level="Intermediate",
+        )
+
+        self.module = Module.objects.create(
+            course=self.course,
+            title="Python Fundamentals",
+            order=1,
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            module=self.module,
+            title="Python Basics",
+            content="Learn Python.",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Python Exercise",
+            activity_type="coding",
+            instructions="Write Python code.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.second_course,
+        )
+
+        Enrollment.objects.create(
+            student=self.second_student,
+            course=self.second_course,
+        )
+
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Hello")',
+            status="graded",
+            score=18,
+            feedback="Good work.",
+        )
+
+    def test_center_requires_login(self):
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+    def test_student_cannot_access_center(self):
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_instructor_sees_only_enrolled_students(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        usernames = {
+            item["student"].username
+            for item in response.context["students"]
+        }
+
+        self.assertIn(
+            "progress_student",
+            usernames,
+        )
+
+        self.assertIn(
+            "progress_student_two",
+            usernames,
+        )
+
+        self.assertNotIn(
+            "unenrolled_student",
+            usernames,
+        )
+
+    def test_course_filter_scopes_student_roster(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        usernames = {
+            item["student"].username
+            for item in response.context["students"]
+        }
+
+        self.assertEqual(
+            usernames,
+            {
+                "progress_student",
+            },
+        )
+
+        self.assertEqual(
+            response.context["selected_course"].id,
+            self.course.id,
+        )
+
+    def test_center_reuses_course_progress_calculation(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        item = response.context["students"][0]
+
+        self.assertEqual(
+            item["average_progress"],
+            100,
+        )
+
+        self.assertEqual(
+            item["average_score"],
+            90.0,
+        )
+
+        self.assertEqual(
+            item["completed_courses"],
+            1,
+        )
+
+        self.assertEqual(
+            item["status_label"],
+            "Completed",
+        )
+
+    def test_correction_submission_marks_student_as_needing_attention(self):
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code='print("Fix me")',
+            status="correction",
+            score=0,
+            feedback="Please correct the logic.",
+        )
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_center",
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        item = response.context["students"][0]
+
+        self.assertEqual(
+            item["correction_count"],
+            1,
+        )
+
+        self.assertEqual(
+            item["status_label"],
+            "Needs Attention",
+        )
+
+    def test_detail_requires_login(self):
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_detail",
+                args=[self.student.id],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+    def test_student_cannot_access_detail(self):
+
+        self.client.force_login(
+            self.student,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_detail",
+                args=[self.student.id],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_instructor_can_view_student_detail(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_detail",
+                args=[self.student.id],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertContains(
+            response,
+            "progress_student",
+        )
+
+        self.assertContains(
+            response,
+            "Progress Python",
+        )
+
+        self.assertContains(
+            response,
+            "Progress Django",
+        )
+
+    def test_detail_course_filter_scopes_progress(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_detail",
+                args=[self.student.id],
+            ),
+            {
+                "course": str(self.course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            len(response.context["course_rows"]),
+            1,
+        )
+
+        self.assertEqual(
+            response.context["course_rows"][0]["course"].id,
+            self.course.id,
+        )
+
+        self.assertEqual(
+            response.context["overall_progress"],
+            100,
+        )
+
+        self.assertEqual(
+            response.context["overall_score"],
+            90.0,
+        )
+
+        self.assertContains(
+            response,
+            "Python Exercise",
+        )
+
+    def test_unenrolled_student_detail_returns_not_found(self):
+
+        self.client.force_login(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_student_progress_detail",
+                args=[self.unenrolled_student.id],
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            404,
+        )

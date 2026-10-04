@@ -1,0 +1,514 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Student Progress | Coding E-Learning Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+    <style>
+
+        .spc-summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin: 24px 0;
+        }
+
+        .spc-stat,
+        .spc-panel,
+        .spc-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .spc-stat strong {
+            display: block;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .spc-stat span,
+        .spc-muted {
+            color: #6b7280;
+        }
+
+        .spc-filter {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 24px;
+        }
+
+        .spc-filter select {
+            min-width: 280px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            background: #ffffff;
+        }
+
+        .spc-card {
+            margin-bottom: 18px;
+        }
+
+        .spc-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .spc-card-header h2 {
+            margin-top: 0;
+            margin-bottom: 6px;
+        }
+
+        .spc-meta {
+            color: #6b7280;
+            line-height: 1.7;
+        }
+
+        .spc-badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .spc-badge.completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .spc-badge.progress {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .spc-badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .spc-badge.attention {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .spc-badge.not-started {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .spc-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .spc-detail {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .spc-detail strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .spc-course-list {
+            margin: 16px 0;
+            display: grid;
+            gap: 10px;
+        }
+
+        .spc-course-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .spc-course-row strong,
+        .spc-course-row span {
+            display: block;
+        }
+
+        .spc-course-row span {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .spc-actions a {
+            display: inline-block;
+            padding: 9px 13px;
+            border-radius: 7px;
+            text-decoration: none;
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .spc-empty {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        @media (max-width: 1000px) {
+
+            .spc-summary,
+            .spc-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+        }
+
+        @media (max-width: 700px) {
+
+            .spc-summary,
+            .spc-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .spc-card-header,
+            .spc-course-row {
+                flex-direction: column;
+            }
+
+            .spc-filter select {
+                width: 100%;
+                min-width: 0;
+            }
+
+        }
+
+        @media (max-width: 500px) {
+
+            .spc-summary,
+            .spc-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+{% include "academy/instructor_nav.html" %}
+
+<header class="page-header">
+
+    <div class="container">
+
+        <h1>Student Progress Center</h1>
+
+        <p>
+            Monitor learner progress, performance and assessment attention
+            from one instructor workspace.
+        </p>
+
+    </div>
+
+</header>
+
+<main class="container">
+
+    <div class="page-actions">
+
+        <a href="{% url 'instructor_dashboard' %}">
+            &larr; Instructor Dashboard
+        </a>
+
+    </div>
+
+    <section class="spc-summary">
+
+        <div class="spc-stat">
+            <strong>{{ total_students }}</strong>
+            <span>Students</span>
+        </div>
+
+        <div class="spc-stat">
+            <strong>{{ completed_students }}</strong>
+            <span>Completed</span>
+        </div>
+
+        <div class="spc-stat">
+            <strong>{{ attention_students }}</strong>
+            <span>Needs Attention</span>
+        </div>
+
+        <div class="spc-stat">
+            <strong>{{ pending_students }}</strong>
+            <span>Pending Review</span>
+        </div>
+
+        <div class="spc-stat">
+            <strong>{{ average_progress }}%</strong>
+            <span>Average Progress</span>
+        </div>
+
+        <div class="spc-stat">
+
+            <strong>
+                {% if average_score is not None %}
+                    {{ average_score }}%
+                {% else %}
+                    ?
+                {% endif %}
+            </strong>
+
+            <span>Average Score</span>
+
+        </div>
+
+    </section>
+
+    <section class="spc-panel">
+
+        <form
+            method="get"
+            class="spc-filter"
+        >
+
+            <div>
+
+                <label for="course">
+                    <strong>Course</strong>
+                </label>
+
+                <br>
+
+                <select
+                    id="course"
+                    name="course"
+                >
+
+                    <option value="all">
+                        All Courses
+                    </option>
+
+                    {% for course in courses %}
+
+                        <option
+                            value="{{ course.id }}"
+                            {% if selected_course and selected_course.id == course.id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ course.title }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <button type="submit">
+                Apply Filter
+            </button>
+
+        </form>
+
+        <p class="spc-muted">
+
+            Showing enrolled students
+            {% if selected_course %}
+                for <strong>{{ selected_course.title }}</strong>.
+            {% else %}
+                across all courses.
+            {% endif %}
+
+        </p>
+
+    </section>
+
+    {% if students %}
+
+        {% for item in students %}
+
+            <article class="spc-card">
+
+                <div class="spc-card-header">
+
+                    <div>
+
+                        <h2>
+                            {{ item.student.username }}
+                        </h2>
+
+                        <div class="spc-meta">
+
+                            {% if item.student.email %}
+                                {{ item.student.email }}<br>
+                            {% endif %}
+
+                            {{ item.course_count }}
+                            course{{ item.course_count|pluralize }}
+                            enrolled
+
+                        </div>
+
+                    </div>
+
+                    <span class="spc-badge {{ item.status_class }}">
+                        {{ item.status_label }}
+                    </span>
+
+                </div>
+
+                <div class="spc-grid">
+
+                    <div class="spc-detail">
+
+                        <strong>Progress</strong>
+
+                        {{ item.average_progress }}%
+
+                    </div>
+
+                    <div class="spc-detail">
+
+                        <strong>Average Score</strong>
+
+                        {% if item.average_score is not None %}
+                            {{ item.average_score }}%
+                        {% else %}
+                            Not graded
+                        {% endif %}
+
+                    </div>
+
+                    <div class="spc-detail">
+
+                        <strong>Completed Courses</strong>
+
+                        {{ item.completed_courses }}/{{ item.course_count }}
+
+                    </div>
+
+                    <div class="spc-detail">
+
+                        <strong>Pending Review</strong>
+
+                        {{ item.pending_count }}
+
+                    </div>
+
+                    <div class="spc-detail">
+
+                        <strong>Corrections / Errors</strong>
+
+                        {{ item.correction_count }} /
+                        {{ item.error_count }}
+
+                    </div>
+
+                </div>
+
+                {% if item.progress_rows %}
+
+                    <div class="spc-course-list">
+
+                        {% for row in item.progress_rows %}
+
+                            <div class="spc-course-row">
+
+                                <div>
+
+                                    <strong>
+                                        {{ row.course.title }}
+                                    </strong>
+
+                                    <span>
+                                        {{ row.progress.lessons_completed }}/{{ row.progress.lessons_total }}
+                                        lessons ?
+                                        {{ row.progress.lesson_percentage }}% progress
+                                    </span>
+
+                                </div>
+
+                                <div>
+
+                                    {% if row.progress.average_score is not None %}
+
+                                        <strong>
+                                            {{ row.progress.average_score }}%
+                                        </strong>
+
+                                    {% else %}
+
+                                        <span>
+                                            Not graded
+                                        </span>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% endif %}
+
+                <div class="spc-actions">
+
+                    <a href="{{ item.detail_url }}">
+                        View Student Details
+                    </a>
+
+                </div>
+
+            </article>
+
+        {% endfor %}
+
+    {% else %}
+
+        <section class="spc-card spc-empty">
+
+            <h2>No enrolled students found</h2>
+
+            <p class="spc-muted">
+                No students match the selected course filter.
+            </p>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+</body>
+
+</html>
