@@ -5890,3 +5890,417 @@ class QuizAPITests(APITestCase):
             response.status_code,
             400,
         )
+
+
+# ============================================================
+# INSTRUCTOR ASSESSMENT CENTER TESTS
+# ============================================================
+
+class InstructorAssessmentCenterTests(TestCase):
+
+    def setUp(self):
+
+        from django.utils import timezone
+
+        self.student = User.objects.create_user(
+            username="iac_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="iac_instructor",
+            password="StrongPass123!",
+            role="INSTRUCTOR",
+        )
+
+        self.course = Course.objects.create(
+            title="Instructor Assessment Course",
+            description="Assessment dashboard course.",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        module = Module.objects.create(
+            course=self.course,
+            title="Fundamentals",
+            order=1,
+        )
+
+        lesson = Lesson.objects.create(
+            course=self.course,
+            module=module,
+            title="Python Basics",
+            content="Learn Python basics.",
+            order=1,
+        )
+
+        activity = Activity.objects.create(
+            lesson=lesson,
+            title="Python Exercise",
+            activity_type="coding",
+            instructions="Write Python code.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        quiz_activity = Activity.objects.create(
+            lesson=lesson,
+            title="Python Fundamentals Quiz",
+            activity_type="quiz",
+            instructions="Answer the quiz.",
+            order=2,
+            max_score=10,
+            is_required=True,
+        )
+
+        quiz = Quiz.objects.create(
+            activity=quiz_activity,
+            passing_score=50,
+        )
+
+        question = QuizQuestion.objects.create(
+            quiz=quiz,
+            question_text="What does print() do?",
+            order=1,
+            points=10,
+            is_active=True,
+        )
+
+        QuizChoice.objects.create(
+            question=question,
+            choice_text="Displays output",
+            order=1,
+            is_correct=True,
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=activity,
+            code='print("Pending")',
+            status="submitted",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=activity,
+            code='print("Graded")',
+            score=18,
+            status="graded",
+            feedback="Good work.",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=activity,
+            code='print("Correction")',
+            score=0,
+            status="correction",
+            feedback="Please correct the logic.",
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=activity,
+            code='print("Error")',
+            status="error",
+        )
+
+        QuizAttempt.objects.create(
+            quiz=quiz,
+            student=self.student,
+            score=10,
+            passed=True,
+            completed_at=timezone.now(),
+        )
+
+        QuizAttempt.objects.create(
+            quiz=quiz,
+            student=self.student,
+            score=0,
+            passed=False,
+            completed_at=timezone.now(),
+        )
+
+    def test_assessment_center_requires_login(self):
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
+
+    def test_student_cannot_access_assessment_center(self):
+
+        self.client.force_login(
+            self.student
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+    def test_instructor_sees_unified_assessments(self):
+
+        self.client.force_login(
+            self.instructor
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.context["all_count"],
+            6,
+        )
+
+        self.assertEqual(
+            response.context["pending_count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["graded_count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["correction_count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["error_count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["quiz_passed_count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.context["quiz_not_passed_count"],
+            1,
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            6,
+        )
+
+        kinds = {
+            item["kind"]
+            for item in response.context["assessments"]
+        }
+
+        self.assertEqual(
+            kinds,
+            {
+                "submission",
+                "quiz",
+            },
+        )
+
+        self.assertContains(
+            response,
+            "Instructor Assessment Center",
+        )
+
+        self.assertContains(
+            response,
+            "Review Submission",
+        )
+
+        self.assertContains(
+            response,
+            "Manage Quiz",
+        )
+
+    def test_assessment_center_filters_work(self):
+
+        self.client.force_login(
+            self.instructor
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            ),
+            {
+                "type": "submission",
+            },
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            4,
+        )
+
+        self.assertTrue(
+            all(
+                item["kind"] == "submission"
+                for item in response.context["assessments"]
+            )
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            ),
+            {
+                "type": "quiz",
+            },
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            2,
+        )
+
+        self.assertTrue(
+            all(
+                item["kind"] == "quiz"
+                for item in response.context["assessments"]
+            )
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            ),
+            {
+                "status": "pending",
+            },
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            1,
+        )
+
+        self.assertEqual(
+            response.context["assessments"][0]["status_label"],
+            "Pending Review",
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            ),
+            {
+                "status": "passed",
+            },
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            1,
+        )
+
+        self.assertEqual(
+            response.context["assessments"][0]["kind"],
+            "quiz",
+        )
+
+    def test_assessment_center_course_filter_scopes_results(self):
+
+        other_course = Course.objects.create(
+            title="Other Assessment Course",
+            description="Another assessment course.",
+            instructor="Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        module = Module.objects.create(
+            course=other_course,
+            title="Module One",
+            order=1,
+        )
+
+        lesson = Lesson.objects.create(
+            course=other_course,
+            module=module,
+            title="Other Lesson",
+            content="Other lesson.",
+            order=1,
+        )
+
+        activity = Activity.objects.create(
+            lesson=lesson,
+            title="Other Exercise",
+            activity_type="assignment",
+            instructions="Submit an assignment.",
+            order=1,
+            max_score=25,
+            is_required=True,
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=activity,
+            code="Other course work",
+            score=20,
+            status="graded",
+        )
+
+        self.client.force_login(
+            self.instructor
+        )
+
+        response = self.client.get(
+            reverse(
+                "instructor_assessment_center"
+            ),
+            {
+                "course": str(other_course.id),
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.context["all_count"],
+            1,
+        )
+
+        self.assertEqual(
+            len(response.context["assessments"]),
+            1,
+        )
+
+        self.assertEqual(
+            response.context["assessments"][0]["title"],
+            "Other Exercise",
+        )
+
+        self.assertEqual(
+            response.context["selected_course"].id,
+            other_course.id,
+        )

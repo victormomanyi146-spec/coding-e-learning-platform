@@ -97,6 +97,12 @@ urlpatterns = [
 
 
     path(
+        "instructor/assessments/",
+        views.instructor_assessment_center,
+        name="instructor_assessment_center",
+    ),
+
+    path(
         "instructor/submissions/",
         views.instructor_submissions,
         name="instructor_submissions",

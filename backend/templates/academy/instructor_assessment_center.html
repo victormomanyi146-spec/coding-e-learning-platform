@@ -1,0 +1,576 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Instructor Assessment Center</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}"
+    >
+
+    <style>
+
+        .iac-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 24px 0;
+        }
+
+        .iac-stat,
+        .iac-panel,
+        .iac-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .iac-stat strong {
+            display: block;
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .iac-stat span,
+        .iac-meta,
+        .iac-note {
+            color: #6b7280;
+        }
+
+        .iac-panel {
+            margin-bottom: 24px;
+        }
+
+        .iac-course-form {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+
+        .iac-course-form select {
+            min-width: 280px;
+            padding: 9px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            background: #ffffff;
+        }
+
+        .iac-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .iac-link {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            color: #374151;
+            background: #ffffff;
+            text-decoration: none;
+        }
+
+        .iac-link.active {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+
+        .iac-card {
+            margin-bottom: 16px;
+        }
+
+        .iac-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .iac-head h2 {
+            margin-top: 0;
+            margin-bottom: 6px;
+        }
+
+        .iac-status {
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .graded,
+        .passed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .correction,
+        .error,
+        .not-passed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .iac-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .iac-detail {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .iac-detail strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .iac-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .iac-actions a {
+            display: inline-block;
+            padding: 9px 13px;
+            border-radius: 7px;
+            text-decoration: none;
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        .iac-actions a.secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        @media (max-width: 800px) {
+
+            .iac-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .iac-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+        }
+
+        @media (max-width: 550px) {
+
+            .iac-summary,
+            .iac-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .iac-head {
+                flex-direction: column;
+            }
+
+            .iac-course-form select {
+                width: 100%;
+                min-width: 0;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+{% include "academy/instructor_nav.html" %}
+
+<header class="page-header">
+
+    <div class="container">
+
+        <h1>Instructor Assessment Center</h1>
+
+        <p>
+            Review student work and monitor quiz outcomes
+            from one place.
+        </p>
+
+    </div>
+
+</header>
+
+<main class="container">
+
+    <div class="page-actions">
+
+        <a href="{% url 'instructor_dashboard' %}">
+            &larr; Instructor Dashboard
+        </a>
+
+    </div>
+
+    <section class="iac-summary">
+
+        <div class="iac-stat">
+            <strong>{{ all_count }}</strong>
+            <span>Total Assessments</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ pending_count }}</strong>
+            <span>Pending Review</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ graded_count }}</strong>
+            <span>Graded Submissions</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ correction_count }}</strong>
+            <span>Needs Correction</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ error_count }}</strong>
+            <span>Execution Errors</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ quiz_passed_count }}</strong>
+            <span>Quiz Passed</span>
+        </div>
+
+        <div class="iac-stat">
+            <strong>{{ quiz_not_passed_count }}</strong>
+            <span>Quiz Not Passed</span>
+        </div>
+
+        <div class="iac-stat">
+
+            <strong>
+
+                {% if average_percentage is not None %}
+                    {{ average_percentage }}%
+                {% else %}
+                    ?
+                {% endif %}
+
+            </strong>
+
+            <span>Average Score</span>
+
+        </div>
+
+    </section>
+
+    <section class="iac-panel">
+
+        <form method="get" class="iac-course-form">
+
+            <div>
+
+                <label for="course">
+                    <strong>Course</strong>
+                </label>
+
+                <br>
+
+                <select
+                    id="course"
+                    name="course"
+                >
+
+                    <option value="all">
+                        All Courses
+                    </option>
+
+                    {% for course in courses %}
+
+                        <option
+                            value="{{ course.id }}"
+                            {% if selected_course and selected_course.id == course.id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ course.title }}
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <input
+                type="hidden"
+                name="type"
+                value="{{ type_filter }}"
+            >
+
+            <input
+                type="hidden"
+                name="status"
+                value="{{ status_filter }}"
+            >
+
+            <button type="submit">
+                Apply Course Filter
+            </button>
+
+        </form>
+
+        <div class="iac-links">
+
+            <strong>Assessment Type:</strong>
+
+            <a
+                class="iac-link {% if type_filter == 'all' %}active{% endif %}"
+                href="{{ type_filter_urls.all }}"
+            >
+                All
+            </a>
+
+            <a
+                class="iac-link {% if type_filter == 'submission' %}active{% endif %}"
+                href="{{ type_filter_urls.submission }}"
+            >
+                Submissions
+            </a>
+
+            <a
+                class="iac-link {% if type_filter == 'quiz' %}active{% endif %}"
+                href="{{ type_filter_urls.quiz }}"
+            >
+                Quizzes
+            </a>
+
+        </div>
+
+        <div class="iac-links">
+
+            <strong>Status:</strong>
+
+            <a
+                class="iac-link {% if status_filter == 'all' %}active{% endif %}"
+                href="{{ status_filter_urls.all }}"
+            >
+                All
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'pending' %}active{% endif %}"
+                href="{{ status_filter_urls.pending }}"
+            >
+                Pending
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'graded' %}active{% endif %}"
+                href="{{ status_filter_urls.graded }}"
+            >
+                Graded
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'correction' %}active{% endif %}"
+                href="{{ status_filter_urls.correction }}"
+            >
+                Needs Correction
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'error' %}active{% endif %}"
+                href="{{ status_filter_urls.error }}"
+            >
+                Errors
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'passed' %}active{% endif %}"
+                href="{{ status_filter_urls.passed }}"
+            >
+                Quiz Passed
+            </a>
+
+            <a
+                class="iac-link {% if status_filter == 'not_passed' %}active{% endif %}"
+                href="{{ status_filter_urls.not_passed }}"
+            >
+                Quiz Not Passed
+            </a>
+
+        </div>
+
+        <p class="iac-note">
+
+            Totals follow the selected course.
+            Type and status filters narrow the assessment list.
+
+        </p>
+
+    </section>
+
+    {% if assessments %}
+
+        {% for assessment in assessments %}
+
+            <article class="iac-card">
+
+                <div class="iac-head">
+
+                    <div>
+
+                        <h2>
+                            {{ assessment.title }}
+                        </h2>
+
+                        <div class="iac-meta">
+
+                            Student:
+                            {{ assessment.student.username }}
+
+                            <br>
+
+                            Course:
+                            {{ assessment.course.title }}
+
+                            <br>
+
+                            Lesson:
+                            {{ assessment.lesson.title }}
+
+                        </div>
+
+                    </div>
+
+                    <span
+                        class="iac-status {{ assessment.status_class }}"
+                    >
+                        {{ assessment.status_label }}
+                    </span>
+
+                </div>
+
+                <div class="iac-grid">
+
+                    <div class="iac-detail">
+
+                        <strong>Type</strong>
+
+                        {{ assessment.activity_type }}
+
+                    </div>
+
+                    <div class="iac-detail">
+
+                        <strong>Date</strong>
+
+                        {{ assessment.submitted_at|date:"M d, Y H:i" }}
+
+                    </div>
+
+                    <div class="iac-detail">
+
+                        <strong>Score</strong>
+
+                        {% if assessment.score is not None %}
+
+                            {{ assessment.score }}
+                            /
+                            {{ assessment.max_score }}
+
+                            {% if assessment.percentage is not None %}
+                                ({{ assessment.percentage }}%)
+                            {% endif %}
+
+                        {% else %}
+
+                            Not graded
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                <div class="iac-actions">
+
+                    {% if assessment.kind == "submission" %}
+
+                        <a
+                            href="{{ assessment.review_url }}"
+                        >
+                            Review Submission
+                        </a>
+
+                        <a
+                            class="secondary"
+                            href="{{ assessment.target_url }}"
+                        >
+                            Open Activity
+                        </a>
+
+                    {% else %}
+
+                        <a
+                            href="{{ assessment.review_url }}"
+                        >
+                            Manage Quiz
+                        </a>
+
+                    {% endif %}
+
+                </div>
+
+            </article>
+
+        {% endfor %}
+
+    {% else %}
+
+        <section class="iac-card">
+
+            <h2>
+                No assessments in this view
+            </h2>
+
+            <p class="iac-note">
+
+                No student assessments match
+                the selected filters.
+
+            </p>
+
+        </section>
+
+    {% endif %}
+
+</main>
+
+</body>
+
+</html>
