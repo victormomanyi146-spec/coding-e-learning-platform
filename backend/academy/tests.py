@@ -7731,3 +7731,150 @@ class StudentNotificationCenterTests(TestCase):
             ).count(),
             1,
         )
+
+class ActivityCompletionAPITests(TestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            username="reading_student",
+            password="StrongPass123!",
+            role="STUDENT",
+        )
+
+        self.course = Course.objects.create(
+            title="Reading API Course",
+            description="Course for reading completion API.",
+            instructor="Instructor",
+            duration="2 weeks",
+            level="Beginner",
+        )
+
+        self.module = Module.objects.create(
+            course=self.course,
+            title="Python Fundamentals",
+            order=1,
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            module=self.module,
+            title="Introduction",
+            content="Read this lesson.",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Reading Activity",
+            activity_type="reading",
+            instructions="Read carefully.",
+            order=1,
+            max_score=10,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+        self.api_client = APIClient()
+
+    def test_reading_activity_can_be_completed(self):
+        self.api_client.force_authenticate(
+            user=self.student,
+        )
+
+        response = self.api_client.post(
+            reverse(
+                "api-activity-complete",
+                args=[self.activity.id],
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            201,
+        )
+
+        self.assertTrue(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).exists()
+        )
+
+        self.assertTrue(
+            response.data["activity"]["is_completed"]
+        )
+
+        self.assertEqual(
+            response.data["progress"]["activities_completed"],
+            1,
+        )
+
+    def test_reading_completion_is_idempotent(self):
+        self.api_client.force_authenticate(
+            user=self.student,
+        )
+
+        first = self.api_client.post(
+            reverse(
+                "api-activity-complete",
+                args=[self.activity.id],
+            ),
+            {},
+            format="json",
+        )
+
+        second = self.api_client.post(
+            reverse(
+                "api-activity-complete",
+                args=[self.activity.id],
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            first.status_code,
+            201,
+        )
+
+        self.assertEqual(
+            second.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.activity,
+            ).count(),
+            1,
+        )
+
+    def test_non_reading_activity_is_rejected(self):
+        self.activity.activity_type = "coding"
+        self.activity.save(
+            update_fields=["activity_type"],
+        )
+
+        self.api_client.force_authenticate(
+            user=self.student,
+        )
+
+        response = self.api_client.post(
+            reverse(
+                "api-activity-complete",
+                args=[self.activity.id],
+            ),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            400,
+        )

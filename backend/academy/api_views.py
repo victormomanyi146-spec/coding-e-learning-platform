@@ -472,6 +472,163 @@ class CourseProgressAPIView(APIView):
 
 
 # ============================================================
+# READING ACTIVITY COMPLETION API
+# ============================================================
+
+class ActivityCompleteAPIView(APIView):
+    """
+    Mark a reading activity complete for the authenticated student.
+    """
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def post(self, request, activity_id):
+        if getattr(
+            request.user,
+            "role",
+            None,
+        ) != "STUDENT":
+            return Response(
+                {
+                    "detail": (
+                        "Only students can complete "
+                        "reading activities."
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        activity = (
+            Activity.objects
+            .select_related(
+                "lesson",
+                "lesson__course",
+            )
+            .filter(
+                id=activity_id,
+            )
+            .first()
+        )
+
+        if activity is None:
+            return Response(
+                {
+                    "detail": "Activity not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if activity.activity_type != "reading":
+            return Response(
+                {
+                    "detail": (
+                        "Only reading activities can be "
+                        "completed through this endpoint."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        course = activity.lesson.course
+
+        if not Enrollment.objects.filter(
+            student=request.user,
+            course=course,
+        ).exists():
+            return Response(
+                {
+                    "detail": "Enrollment required.",
+                    "course": {
+                        "id": course.id,
+                        "title": course.title,
+                        "slug": course.slug,
+                    },
+                    "is_enrolled": False,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not _is_activity_unlocked(
+            request.user,
+            activity,
+        ):
+            return Response(
+                {
+                    "detail": "This activity is currently locked.",
+                    "activity": {
+                        "id": activity.id,
+                        "title": activity.title,
+                    },
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        completion, created = (
+            ActivityCompletion.objects.get_or_create(
+                student=request.user,
+                activity=activity,
+            )
+        )
+
+        progress = _course_progress(
+            request.user,
+            course,
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "Reading activity completed."
+                    if created
+                    else "Reading activity was already completed."
+                ),
+                "created": created,
+                "activity": {
+                    "id": activity.id,
+                    "title": activity.title,
+                    "is_completed": True,
+                },
+                "course": {
+                    "id": course.id,
+                    "title": course.title,
+                    "slug": course.slug,
+                },
+                "progress": {
+                    "overall_percentage": progress["percentage"],
+                    "lesson_percentage": progress[
+                        "lesson_percentage"
+                    ],
+                    "activity_percentage": progress[
+                        "activity_percentage"
+                    ],
+                    "lessons_completed": progress[
+                        "lessons_completed"
+                    ],
+                    "lessons_total": progress[
+                        "lessons_total"
+                    ],
+                    "activities_completed": progress[
+                        "activities_completed"
+                    ],
+                    "activities_total": progress[
+                        "activities_total"
+                    ],
+                },
+            },
+            status=(
+                status.HTTP_201_CREATED
+                if created
+                else status.HTTP_200_OK
+            ),
+        )
+
+# ============================================================
 # SUBMISSIONS API
 # ============================================================
 

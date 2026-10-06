@@ -5,6 +5,7 @@ from .api_views import (
     CourseEnrollAPIView,
     CourseListAPIView,
     CourseProgressAPIView,
+    ActivityCompleteAPIView,
     NotificationListAPIView,
     NotificationReadAPIView,
     QuizAttemptDetailAPIView,
@@ -41,6 +42,12 @@ urlpatterns = [
         "courses/<slug:slug>/progress/",
         CourseProgressAPIView.as_view(),
         name="api-course-progress",
+    ),
+
+    path(
+        "activities/<int:activity_id>/complete/",
+        ActivityCompleteAPIView.as_view(),
+        name="api-activity-complete",
     ),
 
     path(
