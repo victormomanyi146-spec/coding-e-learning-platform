@@ -310,6 +310,27 @@ export default function AssessmentCenterPage() {
             (assessment) =>
                 assessment.availability === "enrollment",
         ).length;
+    const quizAttempts = quizAssessments.flatMap(
+        (assessment) => assessment.attempts,
+    );
+
+    const passedQuizAttempts = quizAttempts.filter(
+        (attempt) => attempt.passed,
+    ).length;
+
+    const quizAverage =
+        quizAttempts.length > 0
+            ? quizAttempts.reduce(
+                  (total, attempt) =>
+                      total + attempt.percentage,
+                  0,
+              ) / quizAttempts.length
+            : null;
+
+    const quizPassRate =
+        quizAttempts.length > 0
+            ? (passedQuizAttempts / quizAttempts.length) * 100
+            : null;
 
     return (
         <div className="page">
@@ -493,6 +514,13 @@ export default function AssessmentCenterPage() {
                                                             submission.submitted_at,
                                                         )}
                                                     </small>
+
+   <Link
+       to={`/assessments/submissions/${submission.id}`}
+       className="text-link"
+   >
+       View assessment
+   </Link>
                                                 </div>
                                             </article>
                                         ),
@@ -560,7 +588,73 @@ export default function AssessmentCenterPage() {
                 </aside>
             </section>
 
-            <section className="dashboard-panel">
+                        <section className="dashboard-panel">
+                <div className="panel-heading">
+                    <div>
+                        <span className="eyebrow">
+                            ASSESSMENT SCORECARD
+                        </span>
+                        <h2>
+                            Your assessment performance
+                        </h2>
+                    </div>
+
+                    <span className="text-link">
+                        Practical + quiz results
+                    </span>
+                </div>
+
+                <div className="dashboard-stats">
+                    <article>
+                        <span>Practical average</span>
+                        <strong>
+                            {averageScore === null
+                                ? "-"
+                                : `${averageScore.toFixed(1)}%`}
+                        </strong>
+                        <small>
+                            across graded submissions
+                        </small>
+                    </article>
+
+                    <article>
+                        <span>Quiz average</span>
+                        <strong>
+                            {quizAverage === null
+                                ? "-"
+                                : `${quizAverage.toFixed(1)}%`}
+                        </strong>
+                        <small>
+                            across recorded quiz attempts
+                        </small>
+                    </article>
+
+                    <article>
+                        <span>Quiz pass rate</span>
+                        <strong>
+                            {quizPassRate === null
+                                ? "-"
+                                : `${quizPassRate.toFixed(1)}%`}
+                        </strong>
+                        <small>
+                            passed attempts vs total attempts
+                        </small>
+                    </article>
+
+                    <article>
+                        <span>Passed quizzes</span>
+                        <strong>
+                            {quizzesQuery.isPending
+                                ? "-"
+                                : `${passedQuizAttempts}/${quizAttemptCount}`}
+                        </strong>
+                        <small>
+                            successful quiz attempts
+                        </small>
+                    </article>
+                </div>
+            </section>
+<section className="dashboard-panel">
                 <div className="panel-heading">
                     <div>
                         <span className="eyebrow">
@@ -902,11 +996,18 @@ export default function AssessmentCenterPage() {
                                                 </small>
 
                                                 <Link
-                                                    to={`/courses/${assessment.courseSlug}/quiz/${assessment.activityId}`}
-                                                    className="text-link"
-                                                >
-                                                    Retake quiz →
-                                                </Link>
+       to={`/assessments/quiz-attempts/${attempt.id}`}
+       className="text-link"
+   >
+       View attempt
+   </Link>
+
+   <Link
+       to={`/courses/${assessment.courseSlug}/quiz/${assessment.activityId}`}
+       className="text-link"
+   >
+       Retake quiz
+   </Link>
                                             </div>
                                         </article>
                                     ),

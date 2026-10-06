@@ -1,4 +1,5 @@
 import AssessmentCenterPage from "./pages/AssessmentCenterPage";
+import AssessmentDetailPage from "./pages/AssessmentDetailPage";
 import {
     Link,
     NavLink,
@@ -242,7 +243,20 @@ function AppShell() {
         element={
             <AssessmentCenterPage />
         }
+    />    <Route
+        path="/assessments/submissions/:submissionId"
+        element={
+            <AssessmentDetailPage />
+        }
     />
+
+    <Route
+        path="/assessments/quiz-attempts/:attemptId"
+        element={
+            <AssessmentDetailPage />
+        }
+    />
+
 </Route>
 
                         <Route

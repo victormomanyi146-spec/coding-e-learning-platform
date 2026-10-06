@@ -1,4 +1,4 @@
-﻿const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 type ApiErrorResponse = {
     detail?: string;
@@ -131,6 +131,18 @@ export function getSubmissions(token: string) {
     );
 }
 
+export function getSubmissionDetail(
+    submissionId: number,
+    token: string,
+) {
+    return apiRequest<
+        import("../types/api").Submission
+    >(
+        `/api/submissions/${submissionId}/`,
+        {},
+        token,
+    );
+}
 export function createSubmission(
     data: {
         activity: number;
@@ -198,6 +210,18 @@ export function getQuizAttempts(
     );
 }
 
+export function getQuizAttemptDetail(
+    attemptId: number,
+    token: string,
+) {
+    return apiRequest<
+        import("../types/api").QuizAttempt
+    >(
+        `/api/quizzes/attempts/${attemptId}/`,
+        {},
+        token,
+    );
+}
 export function completeReadingActivity(
     activityId: number,
     token: string,
