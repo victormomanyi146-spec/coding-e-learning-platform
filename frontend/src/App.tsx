@@ -22,6 +22,7 @@ import QuizPage from "./pages/QuizPage";
 import InstructorAssessmentPage from "./pages/InstructorAssessmentPage";
 import InstructorDashboardPage from "./pages/InstructorDashboardPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import ProjectsPage from "./pages/ProjectsPage";
 
 const navigation = [
     { label: "Home", path: "/" },
@@ -300,13 +301,24 @@ function AppShell() {
                         />
 
                         <Route
-                            path="/projects"element={
-                                <ComingSoonPage
-                                    title="Projects"
-                                    description="Practical projects and portfolio evidence are the next commercial layer of Tech Haven."
-                                />
+                            element={
+                                <ProtectedRoute />
                             }
-                        />
+                        >
+                            <Route
+                                path="/projects"
+                                element={
+                                    <ProjectsPage />
+                                }
+                            />
+
+                            <Route
+                                path="/projects/:courseSlug/:activityId"
+                                element={
+                                    <ProjectsPage />
+                                }
+                            />
+                        </Route>
 
                         <Route
                             path="/certificates"
