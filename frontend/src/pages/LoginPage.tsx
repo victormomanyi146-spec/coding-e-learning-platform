@@ -1,4 +1,6 @@
-﻿import { useState } from "react";
+import {
+    useState,
+} from "react";
 import type { FormEvent } from "react";
 import {
     Link,
@@ -7,6 +9,7 @@ import {
     useNavigate,
 } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import type { LoginMode } from "../api/auth";
 
 export default function LoginPage() {
     const {
@@ -19,6 +22,9 @@ export default function LoginPage() {
 
     const location =
         useLocation();
+
+    const [mode, setMode] =
+        useState<LoginMode>("student");
 
     const [username, setUsername] =
         useState("");
@@ -52,6 +58,7 @@ export default function LoginPage() {
             await login(
                 username.trim(),
                 password,
+                mode,
             );
 
             const destination =
@@ -61,7 +68,11 @@ export default function LoginPage() {
                     | null
                     | undefined
                 )?.from ??
-                "/dashboard";
+                (
+                    mode === "instructor"
+                        ? "/instructor/assessments"
+                        : "/dashboard"
+                );
 
             navigate(
                 destination,
@@ -99,7 +110,9 @@ export default function LoginPage() {
 
                 <div className="auth-heading">
                     <span className="eyebrow">
-                        WELCOME BACK
+                        {mode === "instructor"
+                            ? "INSTRUCTOR ACCESS"
+                            : "WELCOME BACK"}
                     </span>
 
                     <h1>
@@ -113,6 +126,42 @@ export default function LoginPage() {
                         assessment and career
                         journey.
                     </p>
+                </div>
+
+                <div
+                    className="auth-mode-switch"
+                    role="tablist"
+                    aria-label="Account type"
+                >
+                    <button
+                        type="button"
+                        className={
+                            mode === "student"
+                                ? "primary-button"
+                                : "secondary-button"
+                        }
+                        onClick={() => {
+                            setMode("student");
+                            setError("");
+                        }}
+                    >
+                        Student
+                    </button>
+
+                    <button
+                        type="button"
+                        className={
+                            mode === "instructor"
+                                ? "primary-button"
+                                : "secondary-button"
+                        }
+                        onClick={() => {
+                            setMode("instructor");
+                            setError("");
+                        }}
+                    >
+                        Instructor
+                    </button>
                 </div>
 
                 {error && (
@@ -166,7 +215,9 @@ export default function LoginPage() {
                     >
                         {loading
                             ? "Signing in..."
-                            : "Sign in"}
+                            : mode === "instructor"
+                                ? "Sign in as instructor"
+                                : "Sign in"}
                     </button>
                 </form>
 
@@ -179,4 +230,3 @@ export default function LoginPage() {
         </div>
     );
 }
-

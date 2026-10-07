@@ -257,3 +257,24 @@ export function completeReadingActivity(
         token,
     );
 }
+
+export function reviewSubmission(
+    submissionId: number,
+    data: {
+        score?: number;
+        feedback?: string;
+        status?: "graded" | "correction";
+    },
+    token: string,
+) {
+    return apiRequest<
+        import("../types/api").SubmissionReviewResponse
+    >(
+        `/api/submissions/${submissionId}/review/`,
+        {
+            method: "POST",
+            body: JSON.stringify(data),
+        },
+        token,
+    );
+}

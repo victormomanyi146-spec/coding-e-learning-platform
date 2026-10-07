@@ -14,6 +14,7 @@ import type {
     QuizAttempt,
     QuizDetail,
 } from "../types/api";
+const EMPTY_SUBMISSIONS: import("../types/api").Submission[] = [];
 
 function formatDate(value: string) {
     return new Intl.DateTimeFormat(undefined, {
@@ -24,6 +25,10 @@ function formatDate(value: string) {
 
 function statusLabel(status: string) {
     const normalized = status.toLowerCase();
+
+    if (normalized.includes("correction")) {
+        return "Needs correction";
+    }
 
     if (
         normalized.includes("graded") ||
@@ -253,11 +258,13 @@ export default function AssessmentCenterPage() {
     });
 
     const submissions =
-        submissionsQuery.data?.results ?? [];
+        submissionsQuery.data?.results ??
+        EMPTY_SUBMISSIONS;
 
     const gradedSubmissions =
         submissions.filter(
             (submission) =>
+                submission.status !== "correction" &&
                 submission.score !== null,
         );
 

@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
     Link,
     useParams,
@@ -6,6 +7,7 @@ import {
 import {
     getQuizAttemptDetail,
     getSubmissionDetail,
+    reviewSubmission,
 } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type {
@@ -22,9 +24,95 @@ function formatDate(value: string) {
 
 function SubmissionDetail({
     submission,
+    isInstructor,
+    authToken,
 }: {
     submission: Submission;
+    isInstructor: boolean;
+    authToken: string;
 }) {
+    const queryClient = useQueryClient();
+
+    const [score, setScore] = useState(
+        submission.score?.toString() ?? "",
+    );
+
+    const [feedback, setFeedback] = useState(
+        submission.feedback ?? "",
+    );
+
+    const [reviewStatus, setReviewStatus] = useState<
+        "graded" | "correction"
+    >(
+        submission.status === "correction"
+            ? "correction"
+            : "graded",
+    );
+
+    const reviewMutation = useMutation({
+        mutationFn: async () => {
+            const numericScore = Number(score);
+
+            if (
+                !Number.isFinite(numericScore) ||
+                numericScore < 0 ||
+                numericScore >
+                    submission.activity.max_score
+            ) {
+                throw new Error(
+                    `Score must be between 0 and ${submission.activity.max_score}.`,
+                );
+            }
+
+            return reviewSubmission(
+                submission.id,
+                {
+                    score: numericScore,
+                    feedback: feedback.trim(),
+                    status: reviewStatus,
+                },
+                authToken,
+            );
+        },
+        onSuccess: (result) => {
+            setScore(
+                result.submission.score?.toString() ?? "",
+            );
+
+            setFeedback(
+                result.submission.feedback ?? "",
+            );
+
+            setReviewStatus(
+                result.submission.status ===
+                    "correction"
+                    ? "correction"
+                    : "graded",
+            );
+
+            queryClient.setQueryData(
+                [
+                    "assessment-submission-detail",
+                    submission.id.toString(),
+                    authToken,
+                ],
+                result.submission,
+            );
+
+            queryClient.invalidateQueries({
+                predicate: (query) => {
+                    const firstKey =
+                        query.queryKey[0];
+
+                    return (
+                        typeof firstKey === "string" &&
+                        firstKey.startsWith("instructor")
+                    );
+                },
+            });
+        },
+    });
+
     const percentage =
         submission.score === null ||
         submission.activity.max_score <= 0
@@ -51,21 +139,31 @@ function SubmissionDetail({
                 </div>
 
                 <Link
-                    to="/assessments"
+                    to={
+                        isInstructor
+                            ? "/instructor/assessments"
+                            : "/assessments"
+                    }
                     className="text-link"
                 >
-                    Back to assessments
+                    {isInstructor
+                        ? "Back to review queue"
+                        : "Back to assessments"}
                 </Link>
             </section>
 
             <section className="dashboard-stats">
                 <article>
                     <span>Status</span>
+
                     <strong>
-                        {submission.score === null
-                            ? "Pending"
-                            : "Graded"}
+                        {submission.status === "correction"
+                            ? "Needs correction"
+                            : submission.score === null
+                              ? "Pending"
+                              : "Graded"}
                     </strong>
+
                     <small>
                         {submission.status}
                     </small>
@@ -73,11 +171,13 @@ function SubmissionDetail({
 
                 <article>
                     <span>Score</span>
+
                     <strong>
                         {submission.score === null
                             ? "-"
                             : `${submission.score}/${submission.activity.max_score}`}
                     </strong>
+
                     <small>
                         {percentage === null
                             ? "Awaiting assessment"
@@ -87,6 +187,7 @@ function SubmissionDetail({
 
                 <article>
                     <span>Submitted</span>
+
                     <strong>
                         {formatDate(
                             submission.submitted_at,
@@ -173,6 +274,153 @@ function SubmissionDetail({
                     </div>
                 </aside>
             </section>
+
+            {isInstructor && (
+                <section className="dashboard-panel">
+                    <div className="panel-heading">
+                        <div>
+                            <span className="eyebrow">
+                                INSTRUCTOR REVIEW
+                            </span>
+
+                            <h2>
+                                Grade this submission
+                            </h2>
+                        </div>
+                    </div>
+
+                    <form
+                        className="assessment-options"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            reviewMutation.mutate();
+                        }}
+                    >
+                        <article>
+                            <span className="feature-number">
+                                SCORE
+                            </span>
+
+                            <label htmlFor="review-score">
+                                Score
+                            </label>
+
+                            <input
+                                id="review-score"
+                                type="number"
+                                min="0"
+                                max={
+                                    submission.activity
+                                        .max_score
+                                }
+                                step="0.01"
+                                value={score}
+                                onChange={(event) => {
+                                    setScore(
+                                        event.target.value,
+                                    );
+                                }}
+                                required
+                            />
+
+                            <p>
+                                Maximum score:{" "}
+                                {
+                                    submission.activity
+                                        .max_score
+                                }
+                            </p>
+                        </article>
+
+                        <article>
+                            <span className="feature-number">
+                                STATUS
+                            </span>
+
+                            <label htmlFor="review-status">
+                                Review decision
+                            </label>
+
+                            <select
+                                id="review-status"
+                                value={reviewStatus}
+                                onChange={(event) => {
+                                    setReviewStatus(
+                                        event.target.value as
+                                            | "graded"
+                                            | "correction",
+                                    );
+                                }}
+                            >
+                                <option value="graded">
+                                    Graded
+                                </option>
+
+                                <option value="correction">
+                                    Needs correction
+                                </option>
+                            </select>
+
+                            <p>
+                                Mark the submission as
+                                complete or send it back
+                                for another attempt.
+                            </p>
+                        </article>
+
+                        <article>
+                            <span className="feature-number">
+                                FEEDBACK
+                            </span>
+
+                            <label htmlFor="review-feedback">
+                                Instructor feedback
+                            </label>
+
+                            <textarea
+                                id="review-feedback"
+                                rows={6}
+                                value={feedback}
+                                onChange={(event) => {
+                                    setFeedback(
+                                        event.target.value,
+                                    );
+                                }}
+                                placeholder="Add clear, actionable feedback for the learner."
+                            />
+                        </article>
+
+                        <div>
+                            {reviewMutation.isError && (
+                                <div className="status-card error">
+                                    {reviewMutation.error
+                                        instanceof Error
+                                        ? reviewMutation.error.message
+                                        : "Unable to save this review."}
+                                </div>
+                            )}
+
+                            {reviewMutation.isSuccess && (
+                                <div className="status-card">
+                                    Review saved successfully.
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="primary-button"
+                                disabled={
+                                    reviewMutation.isPending
+                                }
+                            >
+                                {reviewMutation.isPending
+                                    ? "Saving review..."
+                                    : "Save review"}
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            )}
 
             {submission.response_text && (
                 <section className="dashboard-panel">
@@ -319,11 +567,13 @@ function QuizAttemptDetail({
             <section className="dashboard-stats">
                 <article>
                     <span>Result</span>
+
                     <strong>
                         {attempt.passed
                             ? "Passed"
                             : "Not passed"}
                     </strong>
+
                     <small>
                         Passing score:{" "}
                         {attempt.quiz.passing_score}%
@@ -332,10 +582,12 @@ function QuizAttemptDetail({
 
                 <article>
                     <span>Score</span>
+
                     <strong>
                         {attempt.score}/
                         {attempt.total_points}
                     </strong>
+
                     <small>
                         {attempt.percentage.toFixed(1)}%
                     </small>
@@ -343,6 +595,7 @@ function QuizAttemptDetail({
 
                 <article>
                     <span>Completed</span>
+
                     <strong>
                         {attempt.completed_at
                             ? formatDate(
@@ -441,6 +694,11 @@ export default function AssessmentDetailPage() {
     const { auth } = useAuth();
     const token = auth?.token ?? "";
 
+    const isInstructor =
+        Boolean(auth?.user.is_staff) ||
+        auth?.user.role === "INSTRUCTOR" ||
+        auth?.user.role === "ADMIN";
+
     const submissionQuery = useQuery({
         queryKey: [
             "assessment-submission-detail",
@@ -508,11 +766,18 @@ export default function AssessmentDetailPage() {
                 <div className="status-card error">
                     Unable to load this submission.
                     <br />
+
                     <Link
-                        to="/assessments"
+                        to={
+                            isInstructor
+                                ? "/instructor/assessments"
+                                : "/assessments"
+                        }
                         className="text-link"
                     >
-                        Back to assessments
+                        {isInstructor
+                            ? "Back to review queue"
+                            : "Back to assessments"}
                     </Link>
                 </div>
             </div>
@@ -528,6 +793,7 @@ export default function AssessmentDetailPage() {
                 <div className="status-card error">
                     Unable to load this quiz attempt.
                     <br />
+
                     <Link
                         to="/assessments"
                         className="text-link"
@@ -548,6 +814,8 @@ export default function AssessmentDetailPage() {
                 submission={
                     submissionQuery.data
                 }
+                isInstructor={isInstructor}
+                authToken={token}
             />
         );
     }
@@ -568,6 +836,7 @@ export default function AssessmentDetailPage() {
             <div className="status-card error">
                 Assessment was not specified.
                 <br />
+
                 <Link
                     to="/assessments"
                     className="text-link"

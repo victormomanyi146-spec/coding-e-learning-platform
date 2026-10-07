@@ -1,11 +1,14 @@
-﻿import {
+import {
     createContext,
     useContext,
     useMemo,
     useState,
     type ReactNode,
 } from "react";
-import { loginRequest } from "../api/auth";
+import {
+    loginRequest,
+    type LoginMode,
+} from "../api/auth";
 import type { AuthUser } from "../types/api";
 
 interface AuthState {
@@ -19,6 +22,7 @@ interface AuthContextValue {
     login: (
         username: string,
         password: string,
+        mode?: LoginMode,
     ) => Promise<void>;
     logout: () => void;
 }
@@ -60,11 +64,13 @@ export function AuthProvider({
     async function login(
         username: string,
         password: string,
+        mode: LoginMode = "student",
     ) {
         const response =
             await loginRequest(
                 username,
                 password,
+                mode,
             );
 
         const nextAuth: AuthState = {

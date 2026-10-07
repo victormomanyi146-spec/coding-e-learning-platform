@@ -19,6 +19,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import ActivityPage from "./pages/ActivityPage";
 import QuizPage from "./pages/QuizPage";
+import InstructorAssessmentPage from "./pages/InstructorAssessmentPage";
+import InstructorDashboardPage from "./pages/InstructorDashboardPage";
 
 const navigation = [
     { label: "Home", path: "/" },
@@ -38,6 +40,13 @@ function AppShell() {
 
     const token =
         auth?.token ?? "";
+
+
+
+    const isInstructor =
+        Boolean(auth?.user.is_staff) ||
+        auth?.user.role === "INSTRUCTOR" ||
+        auth?.user.role === "ADMIN";
 
     const notificationsQuery =
         useQuery({
@@ -76,7 +85,17 @@ function AppShell() {
                     className="sidebar-nav"
                     aria-label="Primary"
                 >
-                    {navigation.map(
+                    {[
+                        ...navigation,
+                        ...(isInstructor
+                            ? [
+                                  {
+                                      label: "Instructor",
+                                      path: "/instructor/assessments",
+                                  },
+                              ]
+                            : []),
+                    ].map(
                         (item) => (
                             <NavLink
                                 key={item.path}
@@ -257,11 +276,30 @@ function AppShell() {
         }
     />
 
-</Route>
+</Route>                          <Route
+                              path="/instructor"
+                              element={
+                                  <InstructorDashboardPage />
+                              }
+                          />
+
 
                         <Route
-                            path="/projects"
+                            path="/instructor/assessments"
                             element={
+                                <InstructorAssessmentPage />
+                            }
+                        />
+
+                        <Route
+                            path="/instructor/assessments/submissions/:submissionId"
+                            element={
+                                <AssessmentDetailPage />
+                            }
+                        />
+
+                        <Route
+                            path="/projects"element={
                                 <ComingSoonPage
                                     title="Projects"
                                     description="Practical projects and portfolio evidence are the next commercial layer of Tech Haven."

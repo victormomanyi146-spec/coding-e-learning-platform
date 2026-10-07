@@ -248,3 +248,8 @@ export interface QuizAttemptResponse {
     };
     attempt: QuizAttempt;
 }
+
+export interface SubmissionReviewResponse {
+    detail: string;
+    submission: Submission;
+}
