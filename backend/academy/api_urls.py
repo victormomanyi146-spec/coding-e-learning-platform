@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .api_views import (
+    CertificateListAPIView,
     CourseDetailAPIView,
     CourseEnrollAPIView,
     CourseListAPIView,
@@ -19,6 +20,12 @@ from .api_views import (
 
 
 urlpatterns = [
+
+    path(
+        "certificates/",
+        CertificateListAPIView.as_view(),
+        name="api-certificates",
+    ),
 
     path(
         "courses/",

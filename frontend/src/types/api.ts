@@ -1,4 +1,4 @@
-﻿export interface Course {
+export interface Course {
     id: number;
     title: string;
     slug: string;
@@ -252,4 +252,25 @@ export interface QuizAttemptResponse {
 export interface SubmissionReviewResponse {
     detail: string;
     submission: Submission;
+}
+
+export interface Certificate {
+    id: number;
+    verification_code: string;
+    learner_name: string;
+    course: {
+        id: number;
+        title: string;
+        slug: string;
+    };
+    course_title: string;
+    average_score: number | null;
+    issued_at: string;
+    is_valid: boolean;
+    verification_url: string;
+}
+
+export interface CertificateListResponse {
+    count: number;
+    results: Certificate[];
 }

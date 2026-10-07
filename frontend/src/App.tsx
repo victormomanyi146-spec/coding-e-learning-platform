@@ -23,6 +23,7 @@ import InstructorAssessmentPage from "./pages/InstructorAssessmentPage";
 import InstructorDashboardPage from "./pages/InstructorDashboardPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import CertificatesPage from "./pages/CertificatesPage";
 
 const navigation = [
     { label: "Home", path: "/" },
@@ -321,14 +322,17 @@ function AppShell() {
                         </Route>
 
                         <Route
-                            path="/certificates"
                             element={
-                                <ComingSoonPage
-                                    title="Certificates"
-                                    description="Verified learner achievements will appear here."
-                                />
+                                <ProtectedRoute />
                             }
-                        />
+                        >
+                            <Route
+                                path="/certificates"
+                                element={
+                                    <CertificatesPage />
+                                }
+                            />
+                        </Route>
 
                         <Route
                             element={
@@ -556,37 +560,6 @@ function FeatureCard({
 
             <p>{text}</p>
         </article>
-    );
-}
-
-function ComingSoonPage({
-    title,
-    description,
-}: {
-    title: string;
-    description: string;
-}) {
-    return (
-        <div className="page centered-page">
-            <div className="empty-panel">
-                <span className="eyebrow">
-                    NEXT LAYER
-                </span>
-
-                <h1>{title}</h1>
-
-                <p>
-                    {description}
-                </p>
-
-                <Link
-                    className="primary-button"
-                    to="/"
-                >
-                    Back to Tech Haven
-                </Link>
-            </div>
-        </div>
     );
 }
 

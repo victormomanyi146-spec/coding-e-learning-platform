@@ -17,6 +17,7 @@ from rest_framework.parsers import (
 from .models import (
     Activity,
     ActivityCompletion,
+    Certificate,
     Course,
     Enrollment,
     Notification,
@@ -27,6 +28,7 @@ from .models import (
     Submission,
 )
 from .api_serializers import (
+    CertificateAPISerializer,
     CourseDetailAPISerializer,
     CourseListAPISerializer,
     QuizAPISerializer,
@@ -1920,5 +1922,130 @@ class QuizAttemptDetailAPIView(APIView):
 
         return Response(
             serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+# ============================================================
+# CERTIFICATES API
+# ============================================================
+
+class CertificateListAPIView(APIView):
+    """Return certificates earned by the authenticated student."""
+
+    authentication_classes = [
+        TokenAuthentication,
+    ]
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    def get(self, request):
+        if getattr(
+            request.user,
+            "role",
+            None,
+        ) != "STUDENT":
+            return Response(
+                {
+                    "detail": (
+                        "Only students can access "
+                        "their certificates."
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        enrollments = (
+            Enrollment.objects
+            .filter(
+                student=request.user,
+            )
+            .select_related(
+                "course",
+            )
+            .order_by(
+                "course__title",
+            )
+        )
+
+        certificates = []
+
+        for enrollment in enrollments:
+            course = enrollment.course
+
+            progress = _course_progress(
+                request.user,
+                course,
+            )
+
+            certificate_available = (
+                progress["lessons_total"] > 0
+                and progress["lessons_completed"]
+                == progress["lessons_total"]
+            )
+
+            if not certificate_available:
+                continue
+
+            learner_name = (
+                request.user.get_full_name().strip()
+                or request.user.username
+            )
+
+            certificate, created = (
+                Certificate.objects.get_or_create(
+                    student=request.user,
+                    course=course,
+                    defaults={
+                        "learner_name": learner_name,
+                        "course_title": course.title,
+                        "average_score": progress[
+                            "average_score"
+                        ],
+                    },
+                )
+            )
+
+            updates = {}
+
+            if certificate.learner_name != learner_name:
+                updates["learner_name"] = learner_name
+
+            if certificate.course_title != course.title:
+                updates["course_title"] = course.title
+
+            if (
+                certificate.average_score
+                != progress["average_score"]
+            ):
+                updates["average_score"] = (
+                    progress["average_score"]
+                )
+
+            if updates:
+                Certificate.objects.filter(
+                    pk=certificate.pk,
+                ).update(**updates)
+
+                certificate.refresh_from_db()
+
+            certificates.append(
+                certificate,
+            )
+
+        serializer = CertificateAPISerializer(
+            certificates,
+            many=True,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            {
+                "count": len(certificates),
+                "results": serializer.data,
+            },
             status=status.HTTP_200_OK,
         )

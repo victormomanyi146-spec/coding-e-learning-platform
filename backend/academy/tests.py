@@ -7947,3 +7947,346 @@ class ActivityCompletionAPITests(TestCase):
             response.status_code,
             400,
         )
+
+class CertificateAPITests(APITestCase):
+    """Focused tests for the token-authenticated certificates API."""
+
+    def setUp(self):
+        self.student = User.objects.create_user(
+            username="certificate_student",
+            password="CertificateStudent@2026!",
+            first_name="Certificate",
+            last_name="Student",
+            role="STUDENT",
+        )
+
+        self.other_student = User.objects.create_user(
+            username="certificate_other",
+            password="CertificateOther@2026!",
+            role="STUDENT",
+        )
+
+        self.instructor = User.objects.create_user(
+            username="certificate_instructor",
+            password="CertificateInstructor@2026!",
+            role="INSTRUCTOR",
+            is_staff=True,
+        )
+
+        self.student_token = Token.objects.create(
+            user=self.student,
+        )
+
+        Token.objects.create(
+            user=self.other_student,
+        )
+
+        Token.objects.create(
+            user=self.instructor,
+        )
+
+        self.course = Course.objects.create(
+            title="Certificate API Course",
+            description="Certificate API test course",
+            instructor="API Instructor",
+            duration="4 weeks",
+            level="Beginner",
+        )
+
+        self.module = Module.objects.create(
+            course=self.course,
+            title="Module 1",
+            description="Certificate module",
+            order=1,
+        )
+
+        self.lesson = Lesson.objects.create(
+            course=self.course,
+            module=self.module,
+            title="Lesson 1",
+            content="Certificate lesson",
+            order=1,
+        )
+
+        self.activity = Activity.objects.create(
+            lesson=self.lesson,
+            title="Certificate Activity",
+            activity_type="coding",
+            instructions="Complete this activity.",
+            order=1,
+            max_score=20,
+            is_required=True,
+        )
+
+        Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+        )
+
+    def authenticate(self, user=None):
+        user = user or self.student
+
+        token = Token.objects.get(
+            user=user,
+        )
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+
+    def test_unauthenticated_certificate_list_requires_authentication(self):
+        response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            401,
+        )
+
+    def test_instructor_cannot_access_student_certificates_api(self):
+        self.authenticate(
+            self.instructor,
+        )
+
+        response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            403,
+        )
+
+        self.assertEqual(
+            response.data["detail"],
+            "Only students can access their certificates.",
+        )
+
+    def test_incomplete_course_does_not_return_certificate(self):
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["count"],
+            0,
+        )
+
+        self.assertEqual(
+            response.data["results"],
+            [],
+        )
+
+        self.assertFalse(
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).exists()
+        )
+
+    def test_completed_course_creates_and_returns_certificate(self):
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="print('certificate')",
+            status="graded",
+            score=18,
+            feedback="Excellent work.",
+        )
+
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["count"],
+            1,
+        )
+
+        self.assertEqual(
+            len(response.data["results"]),
+            1,
+        )
+
+        certificate_data = response.data["results"][0]
+
+        self.assertEqual(
+            certificate_data["learner_name"],
+            "Certificate Student",
+        )
+
+        self.assertEqual(
+            certificate_data["course"]["id"],
+            self.course.id,
+        )
+
+        self.assertEqual(
+            certificate_data["course"]["title"],
+            self.course.title,
+        )
+
+        self.assertEqual(
+            certificate_data["course"]["slug"],
+            self.course.slug,
+        )
+
+        self.assertEqual(
+            certificate_data["course_title"],
+            self.course.title,
+        )
+
+        self.assertEqual(
+            certificate_data["average_score"],
+            90,
+        )
+
+        self.assertTrue(
+            certificate_data["is_valid"],
+        )
+
+        self.assertIsNotNone(
+            certificate_data["verification_code"],
+        )
+
+        self.assertIn(
+            "/courses/certificates/verify/",
+            certificate_data["verification_url"],
+        )
+
+        self.assertTrue(
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).exists()
+        )
+
+    def test_repeated_certificate_requests_are_idempotent(self):
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        self.authenticate()
+
+        first_response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        first_certificate = (
+            first_response.data["results"][0]
+        )
+
+        certificate_count_after_first_request = (
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).count()
+        )
+
+        second_response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            200,
+        )
+
+        second_certificate = (
+            second_response.data["results"][0]
+        )
+
+        certificate_count_after_second_request = (
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).count()
+        )
+
+        self.assertEqual(
+            certificate_count_after_first_request,
+            1,
+        )
+
+        self.assertEqual(
+            certificate_count_after_second_request,
+            1,
+        )
+
+        self.assertEqual(
+            first_certificate["id"],
+            second_certificate["id"],
+        )
+
+        self.assertEqual(
+            first_certificate["verification_code"],
+            second_certificate["verification_code"],
+        )
+
+    def test_student_only_receives_own_certificates(self):
+        ActivityCompletion.objects.create(
+            student=self.student,
+            activity=self.activity,
+        )
+
+        Certificate.objects.create(
+            student=self.other_student,
+            course=self.course,
+            learner_name="Other Student",
+            course_title=self.course.title,
+            average_score=85,
+        )
+
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/certificates/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["count"],
+            1,
+        )
+
+        self.assertEqual(
+            response.data["results"][0]["learner_name"],
+            "Certificate Student",
+        )
+
+        self.assertEqual(
+            Certificate.objects.filter(
+                student=self.other_student,
+                course=self.course,
+            ).count(),
+            1,
+        )

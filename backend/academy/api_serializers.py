@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from .models import (
     Activity,
+    Certificate,
     Course,
     Lesson,
     Module,
@@ -339,4 +340,40 @@ class QuizAttemptAPISerializer(serializers.ModelSerializer):
 
         return round(
             (obj.score / total_points) * 100
+        )
+
+class CertificateAPISerializer(serializers.ModelSerializer):
+    course = serializers.SerializerMethodField()
+    verification_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Certificate
+        fields = [
+            "id",
+            "verification_code",
+            "learner_name",
+            "course",
+            "course_title",
+            "average_score",
+            "issued_at",
+            "is_valid",
+            "verification_url",
+        ]
+        read_only_fields = fields
+
+    def get_course(self, obj):
+        return {
+            "id": obj.course_id,
+            "title": obj.course.title,
+            "slug": obj.course.slug,
+        }
+
+    def get_verification_url(self, obj):
+        request = self.context.get("request")
+
+        if request is None:
+            return None
+
+        return request.build_absolute_uri(
+            f"/courses/certificates/verify/{obj.verification_code}/"
         )

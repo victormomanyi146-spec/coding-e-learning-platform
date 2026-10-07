@@ -293,3 +293,15 @@ export function reviewSubmission(
         token,
     );
 }
+
+export function getCertificates(
+    token: string,
+) {
+    return apiRequest<
+        import("../types/api").CertificateListResponse
+    >(
+        "/api/certificates/",
+        {},
+        token,
+    );
+}
