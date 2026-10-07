@@ -1714,6 +1714,7 @@ class QuizAttemptListCreateAPIView(APIView):
                 quiz=quiz,
                 student=request.user,
                 score=0,
+                total_points=total_points,
                 passed=False,
                 completed_at=timezone.now(),
             )

@@ -261,6 +261,10 @@ class QuizAttempt(models.Model):
         blank=True,
     )
 
+    total_points = models.PositiveIntegerField(
+        default=0,
+    )
+
     passed = models.BooleanField(
         default=False,
     )
@@ -273,6 +277,33 @@ class QuizAttempt(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(score__isnull=True)
+                    | models.Q(score__lte=models.F("total_points"))
+                ),
+                name="quiz_attempt_score_lte_total_points",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Snapshot the quiz's active-point total only when the
+        # attempt is first created. Existing attempts retain
+        # their historical total even if the quiz is edited later.
+        if self._state.adding and self.total_points == 0:
+            self.total_points = (
+                self.quiz.questions
+                .filter(is_active=True)
+                .aggregate(
+                    total=models.Sum("points"),
+                )["total"]
+                or 0
+            )
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return (

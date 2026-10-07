@@ -1687,11 +1687,7 @@ def student_assessment_history(request):
 
     for attempt in quiz_attempts:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         percentage = (
             round(
@@ -1757,11 +1753,7 @@ def student_assessment_history(request):
 
     for attempt in quiz_attempts_base:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         if total_points:
             score_percentages.append(
@@ -2126,11 +2118,7 @@ def instructor_assessment_center(request):
 
     for attempt in quiz_base:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         if total_points and attempt.score is not None:
             score_percentages.append(
@@ -2285,11 +2273,7 @@ def instructor_assessment_center(request):
 
     for attempt in quiz_attempts:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         percentage = (
             round(
@@ -4250,11 +4234,7 @@ def quiz_history(request, course_slug):
 
     for attempt in attempts:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         percentage = (
             round(
@@ -4353,10 +4333,7 @@ def quiz_attempt_review(request, course_slug, attempt_id):
 
     review = []
 
-    total_points = sum(
-        question.points
-        for question in questions
-    )
+    total_points = attempt.total_points
 
     for question in questions:
 
@@ -5035,11 +5012,7 @@ def _course_progress(student, course):
 
     for attempt in quiz_attempts:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         if not total_points:
             continue
@@ -5148,11 +5121,7 @@ def _course_progress(student, course):
 
     for attempt in latest_quiz_attempts:
 
-        total_points = sum(
-            question.points
-            for question in attempt.quiz.questions.all()
-            if question.is_active
-        )
+        total_points = attempt.total_points
 
         percentage = (
             round(

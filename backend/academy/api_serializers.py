@@ -329,17 +329,12 @@ class QuizAttemptAPISerializer(serializers.ModelSerializer):
         }
 
     def get_total_points(self, obj):
-        return sum(
-            question.points
-            for question in obj.quiz.questions.filter(
-                is_active=True,
-            )
-        )
+        return obj.total_points
 
     def get_percentage(self, obj):
         total_points = self.get_total_points(obj)
 
-        if not total_points:
+        if not total_points or obj.score is None:
             return 0
 
         return round(

@@ -5699,6 +5699,15 @@ class QuizAPITests(APITestCase):
             100,
         )
 
+        attempt = QuizAttempt.objects.get(
+            id=response.data["attempt"]["id"],
+        )
+
+        self.assertEqual(
+            attempt.total_points,
+            10,
+        )
+
         self.assertTrue(
             response.data["result"]["passed"],
         )
@@ -5721,6 +5730,66 @@ class QuizAPITests(APITestCase):
                 activity=self.activity,
             ).exists()
         )
+
+    def test_attempt_total_points_is_snapshot_not_current_quiz_total(self):
+
+        self.authenticate(
+            self.student,
+        )
+
+        attempt = QuizAttempt.objects.create(
+            quiz=self.quiz,
+            student=self.student,
+            score=10,
+            total_points=10,
+            passed=True,
+        )
+
+        QuizQuestion.objects.create(
+            quiz=self.quiz,
+            question_text="A later-added question.",
+            order=2,
+            points=1,
+            is_active=True,
+        )
+
+        response = self.client.get(
+            f"/api/quizzes/attempts/{attempt.id}/",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.data["score"],
+            10,
+        )
+
+        self.assertEqual(
+            response.data["total_points"],
+            10,
+        )
+
+        self.assertEqual(
+            response.data["percentage"],
+            100,
+        )
+
+    def test_attempt_score_cannot_exceed_snapshot_total(self):
+
+        from django.db import IntegrityError
+
+        with self.assertRaises(IntegrityError):
+            QuizAttempt.objects.create(
+                quiz=self.quiz,
+                student=self.student,
+                score=11,
+                total_points=10,
+                passed=True,
+            )
+
 
     def test_failing_quiz_does_not_complete_activity(self):
 
