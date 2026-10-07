@@ -91,7 +91,7 @@ function AppShell() {
                             ? [
                                   {
                                       label: "Instructor",
-                                      path: "/instructor/assessments",
+                                      path: "/instructor",
                                   },
                               ]
                             : []),
