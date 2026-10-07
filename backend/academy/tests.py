@@ -2952,7 +2952,7 @@ class AcademyFlowTests(TestCase):
 
         self.assertContains(
             response,
-            "Verified Certificate",
+            "Verified Credential",
         )
 
         self.assertContains(
@@ -4058,7 +4058,7 @@ class UiNavigationIntegrationTests(TestCase):
 
         self.assertContains(
             response,
-            "Coding Academy",
+            "Tech Haven",
         )
 
         self.assertContains(

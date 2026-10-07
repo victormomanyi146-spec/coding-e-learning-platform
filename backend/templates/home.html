@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coding Academy</title>
+    <title>Tech Haven</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
 
 <header>
     <nav class="navbar">
-        <a class="logo" href="/">Coding Academy</a>
+        <a class="logo" href="/">Tech Haven</a>
         <a href="/">Home</a>
         <a href="{% url 'course_list' %}">Courses</a>
         {% if request.user.is_authenticated %}
@@ -65,7 +65,7 @@
 </section>
 
 <section id="about" class="about">
-    <h2>About Coding Academy</h2>
+    <h2>About Tech Haven</h2>
     <p>
         A practical learning platform for programming, web development,
         backend engineering, and software development skills.
@@ -73,7 +73,7 @@
 </section>
 
 <footer id="contact">
-    <p>&copy; 2026 Coding Academy. All rights reserved.</p>
+    <p>&copy; 2026 Tech Haven. All rights reserved.</p>
 </footer>
 
 </body>
