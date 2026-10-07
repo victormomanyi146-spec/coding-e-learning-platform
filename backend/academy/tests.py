@@ -2998,7 +2998,7 @@ class AcademyFlowTests(TestCase):
 
         self.assertContains(
             response,
-            "Certificate Invalid",
+            "This certificate could not be verified as an active",
         )
 
         self.assertContains(
