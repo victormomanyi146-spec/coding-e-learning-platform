@@ -534,7 +534,7 @@ function CourseCard({
                 </span>
 
                 <span className="course-arrow">
-                    ?
+                    →
                 </span>
             </Link>
         </article>
