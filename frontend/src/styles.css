@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     font-family:
         Inter, ui-sans-serif, system-ui, -apple-system,
         BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -2053,5 +2053,152 @@ a {
     .th-reading-complete-panel {
         flex-direction: column;
         align-items: flex-start;
+    }
+}
+
+/* ============================================================
+   TECH HAVEN NOTIFICATION CENTER
+   ============================================================ */
+
+.notification-stats {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.notification-center-panel {
+    margin-top: 16px;
+}
+
+.notification-toolbar {
+    align-items: center;
+}
+
+.notification-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.notification-filter {
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 9px;
+    background: rgba(2, 8, 23, 0.36);
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.notification-filter.active {
+    border-color: rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.12);
+    color: #bae6fd;
+}
+
+.notification-list {
+    display: grid;
+    gap: 12px;
+}
+
+.notification-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 10px;
+    gap: 18px;
+    padding: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 15px;
+    background: rgba(2, 8, 23, 0.28);
+}
+
+.notification-card.unread {
+    border-color: rgba(56, 189, 248, 0.2);
+}
+
+.notification-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.notification-card-top time {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.notification-card h3 {
+    margin: 10px 0 8px;
+    color: #f8fafc;
+    font-size: 20px;
+}
+
+.notification-card p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.notification-card-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.notification-read-button {
+    min-height: 38px;
+    padding: 0 13px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.notification-read-button:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
+}
+
+.notification-read-label {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.notification-status-dot {
+    align-self: start;
+    width: 8px;
+    height: 8px;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: #38bdf8;
+}
+
+.notification-status-dot.read {
+    background: #475569;
+}
+
+@media (max-width: 760px) {
+    .notification-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .notification-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .notification-card {
+        grid-template-columns: 1fr;
+    }
+
+    .notification-status-dot {
+        display: none;
+    }
+
+    .notification-card-top {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

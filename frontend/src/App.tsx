@@ -21,6 +21,7 @@ import ActivityPage from "./pages/ActivityPage";
 import QuizPage from "./pages/QuizPage";
 import InstructorAssessmentPage from "./pages/InstructorAssessmentPage";
 import InstructorDashboardPage from "./pages/InstructorDashboardPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 const navigation = [
     { label: "Home", path: "/" },
@@ -318,14 +319,17 @@ function AppShell() {
                         />
 
                         <Route
-                            path="/notifications"
                             element={
-                                <ComingSoonPage
-                                    title="Notifications"
-                                    description="The existing Django notification system is ready and will be connected to this React view next."
-                                />
+                                <ProtectedRoute />
                             }
-                        />
+                        >
+                            <Route
+                                path="/notifications"
+                                element={
+                                    <NotificationsPage />
+                                }
+                            />
+                        </Route>
 
                         <Route
                             path="*"

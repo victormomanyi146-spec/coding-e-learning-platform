@@ -91,6 +91,21 @@ export function getNotifications(token: string) {
     );
 }
 
+export function markNotificationRead(
+    notificationId: number,
+    token: string,
+) {
+    return apiRequest<
+        import("../types/api").Notification
+    >(
+        `/api/notifications/${notificationId}/read/`,
+        {
+            method: "POST",
+            body: JSON.stringify({}),
+        },
+        token,
+    );
+}
 export function getCourseDetail(slug: string) {
     return apiRequest<import("../types/api").CourseDetail>(
         `/api/courses/${encodeURIComponent(slug)}/`,
