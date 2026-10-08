@@ -42,6 +42,7 @@ from .views import (
     _lesson_is_completed,
     _mark_progress,
     _module_progress,
+    _notify_submission_review,
 )
 
 
@@ -1267,6 +1268,12 @@ class SubmissionReviewAPIView(APIView):
         else:
             score = None
 
+        review_changed = (
+            submission.status != review_status
+            or submission.score != score
+            or submission.feedback != feedback
+        )
+
         submission.score = score
         submission.feedback = feedback
         submission.status = review_status
@@ -1313,13 +1320,14 @@ class SubmissionReviewAPIView(APIView):
                 f" Instructor feedback: {feedback}"
             )
 
-        Notification.objects.create(
-            recipient=submission.student,
-            notification_type=review_status,
-            title=notification_title,
-            message=notification_message,
-            link_url=activity_url,
-        )
+        if review_changed:
+            _notify_submission_review(
+                submission,
+                status=review_status,
+                score=score,
+                feedback=feedback,
+                link_url=f"/assessments/submissions/{submission.id}",
+            )
 
         if review_status == "correction":
 

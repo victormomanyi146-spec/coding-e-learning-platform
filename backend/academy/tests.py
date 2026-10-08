@@ -5402,6 +5402,228 @@ class SubmissionAPITests(APITestCase):
             ).exists()
         )
 
+    def test_repeated_identical_api_review_does_not_duplicate_notification(self):
+        from .models import Notification, Submission
+
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="",
+            response_text="Ready for grading",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        payload = {
+            "score": 18,
+            "feedback": "Good work. Add more detail next time.",
+            "status": "graded",
+        }
+
+        first_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        second_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            200,
+        )
+
+        notifications = Notification.objects.filter(
+            recipient=self.student,
+            notification_type="graded",
+        )
+
+        self.assertEqual(
+            notifications.count(),
+            1,
+        )
+
+        notification = notifications.get()
+
+        self.assertEqual(
+            notification.title,
+            "Submission Graded",
+        )
+
+        self.assertIn(
+            "submission #",
+            notification.message,
+        )
+
+        self.assertIn(
+            "Score: 18/20.",
+            notification.message,
+        )
+
+        self.assertEqual(
+            notification.link_url,
+            f"/assessments/submissions/{submission.id}",
+        )
+
+    def test_review_state_transition_creates_new_notification(self):
+        from .models import Notification, Submission
+
+        submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="",
+            response_text="Ready for review",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        graded_payload = {
+            "score": 18,
+            "feedback": "Good work.",
+            "status": "graded",
+        }
+
+        correction_payload = {
+            "score": 0,
+            "feedback": "Needs another pass.",
+            "status": "correction",
+        }
+
+        first_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            graded_payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        correction_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            correction_payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            correction_response.status_code,
+            200,
+        )
+
+        final_response = self.client.post(
+            f"/api/submissions/{submission.id}/review/",
+            graded_payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            final_response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.student,
+                notification_type="graded",
+            ).count(),
+            2,
+        )
+
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.student,
+                notification_type="correction",
+            ).count(),
+            1,
+        )
+
+
+    def test_different_submissions_create_distinct_notifications(self):
+        from .models import Notification, Submission
+
+        first_submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="first",
+            response_text="First submission",
+            status="submitted",
+        )
+
+        second_submission = Submission.objects.create(
+            student=self.student,
+            activity=self.activity,
+            code="second",
+            response_text="Second submission",
+            status="submitted",
+        )
+
+        self.authenticate(
+            self.instructor,
+        )
+
+        payload = {
+            "score": 18,
+            "feedback": "Good work.",
+            "status": "graded",
+        }
+
+        first_response = self.client.post(
+            f"/api/submissions/{first_submission.id}/review/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            200,
+        )
+
+        second_response = self.client.post(
+            f"/api/submissions/{second_submission.id}/review/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(
+            second_response.status_code,
+            200,
+        )
+
+        notifications = Notification.objects.filter(
+            recipient=self.student,
+            notification_type="graded",
+        ).order_by("id")
+
+        self.assertEqual(
+            notifications.count(),
+            2,
+        )
+
+        self.assertIn(
+            f"submission #{first_submission.id}",
+            notifications[0].message,
+        )
+
+        self.assertIn(
+            f"submission #{second_submission.id}",
+            notifications[1].message,
+        )
     def test_instructor_score_cannot_exceed_activity_maximum(self):
 
         from .models import Submission

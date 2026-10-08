@@ -2455,6 +2455,45 @@ def instructor_assessment_center(request):
 # REVIEW SUBMISSION
 # ============================================================
 
+def _notify_submission_review(
+    submission,
+    *,
+    status,
+    score,
+    feedback,
+    link_url,
+):
+    """Create a learner notification for a changed review."""
+    if status == "correction":
+        title = "Correction Required"
+        message = (
+            f"Your submission #{submission.id} for "
+            f"'{submission.activity.title}' needs correction."
+        )
+    else:
+        title = "Submission Graded"
+        message = (
+            f"Your submission #{submission.id} for "
+            f"'{submission.activity.title}' has been graded."
+        )
+
+    if score is not None:
+        message += (
+            f" Score: {score}/{submission.activity.max_score}."
+        )
+
+    if feedback:
+        message += f" Instructor feedback: {feedback}"
+
+    return Notification.objects.create(
+        recipient=submission.student,
+        notification_type=status,
+        title=title,
+        message=message,
+        link_url=link_url,
+    )
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def review_submission(
@@ -2542,6 +2581,14 @@ def review_submission(
         else:
             submission.score = None
 
+        new_score = score if score_value else None
+
+        review_changed = (
+            submission.status != status
+            or submission.score != new_score
+            or submission.feedback != feedback
+        )
+
         submission.feedback = feedback
         submission.status = status
         submission.save()
@@ -2582,13 +2629,14 @@ def review_submission(
                 f" Instructor feedback: {feedback}"
             )
 
-        Notification.objects.create(
-            recipient=submission.student,
-            notification_type=submission.status,
-            title=notification_title,
-            message=notification_message,
-            link_url=activity_url,
-        )
+        if review_changed:
+            _notify_submission_review(
+                submission,
+                status=submission.status,
+                score=submission.score,
+                feedback=feedback,
+                link_url=activity_url,
+            )
 
         # --------------------------------------------
         # Update activity completion
