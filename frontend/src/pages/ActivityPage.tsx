@@ -33,6 +33,48 @@ function activityTypeLabel(value: string) {
         );
 }
 
+function submissionStatusLabel(
+    submission: {
+        status: string;
+        score: number | null;
+    },
+) {
+    if (submission.status === "correction") {
+        return "Needs correction";
+    }
+
+    if (submission.status === "error") {
+        return "Execution error";
+    }
+
+    if (submission.score !== null) {
+        return "Graded";
+    }
+
+    return "Awaiting review";
+}
+
+function submissionStatusMessage(
+    submission: {
+        status: string;
+        score: number | null;
+    },
+) {
+    if (submission.status === "correction") {
+        return "Your instructor asked you to revise this work before resubmitting.";
+    }
+
+    if (submission.status === "error") {
+        return "The submitted work encountered an execution error.";
+    }
+
+    if (submission.score !== null) {
+        return "Your instructor has completed the assessment.";
+    }
+
+    return "Your submission is waiting for instructor review.";
+}
+
 export default function ActivityPage() {
     const {
         slug,
@@ -222,6 +264,15 @@ export default function ActivityPage() {
                             Number(
                                 activityId,
                             ),
+                    )
+                    .sort(
+                        (first, second) =>
+                            new Date(
+                                second.submitted_at,
+                            ).getTime() -
+                            new Date(
+                                first.submitted_at,
+                            ).getTime(),
                     )[0]
             );
         }, [
@@ -511,17 +562,33 @@ export default function ActivityPage() {
                 </section>
 
                 {latestSubmission && (
-                    <section className="th-submission-status">
+                    <section
+                        className={
+                            latestSubmission.status ===
+                            "correction"
+                                ? "th-submission-status th-submission-status-correction"
+                                : latestSubmission.status ===
+                                    "error"
+                                  ? "th-submission-status th-submission-status-error"
+                                  : "th-submission-status"
+                        }
+                    >
                         <div>
                             <span className="th-eyebrow">
                                 LATEST SUBMISSION
                             </span>
 
                             <strong>
-                                {
-                                    latestSubmission.status
-                                }
+                                {submissionStatusLabel(
+                                    latestSubmission,
+                                )}
                             </strong>
+
+                            <small>
+                                {submissionStatusMessage(
+                                    latestSubmission,
+                                )}
+                            </small>
                         </div>
 
                         <div>
@@ -536,12 +603,35 @@ export default function ActivityPage() {
                         </div>
 
                         {latestSubmission.feedback && (
-                            <p>
-                                {
-                                    latestSubmission.feedback
-                                }
-                            </p>
+                            <div className="th-submission-feedback">
+                                <span className="th-eyebrow">
+                                    INSTRUCTOR FEEDBACK
+                                </span>
+
+                                <p>
+                                    {
+                                        latestSubmission.feedback
+                                    }
+                                </p>
+                            </div>
                         )}
+
+                        <div className="th-submission-actions">
+                            <Link
+                                className="th-secondary-button"
+                                to={`/assessments/submissions/${latestSubmission.id}`}
+                            >
+                                View assessment feedback
+                            </Link>
+
+                            {latestSubmission.status ===
+                                "correction" && (
+                                <span>
+                                    Update your work below
+                                    and resubmit for review.
+                                </span>
+                            )}
+                        </div>
                     </section>
                 )}
 
@@ -643,7 +733,10 @@ export default function ActivityPage() {
                         >
                             {submitMutation.isPending
                                 ? "Submitting..."
-                                : "Submit for assessment"}
+                                : latestSubmission?.status ===
+                                    "correction"
+                                  ? "Resubmit for assessment"
+                                  : "Submit for assessment"}
                         </button>
                     </div>
 
@@ -657,9 +750,10 @@ export default function ActivityPage() {
 
                     {submitMutation.isSuccess && (
                         <div className="th-form-success">
-                            Submission sent successfully.
-                            Your instructor can now review
-                            your work.
+                            {latestSubmission?.status ===
+                            "correction"
+                                ? "Resubmission sent successfully. Your instructor can review the updated work."
+                                : "Submission sent successfully. Your instructor can now review your work."}
                         </div>
                     )}
                 </form>

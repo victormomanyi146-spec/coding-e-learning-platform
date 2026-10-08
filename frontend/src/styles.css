@@ -1786,6 +1786,46 @@ a {
     opacity: 0.68;
 }
 
+.th-submission-status-correction {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.th-submission-status-error {
+    border-color: rgba(239, 68, 68, 0.28);
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.th-submission-status small {
+    display: block;
+    margin-top: 6px;
+    line-height: 1.5;
+    opacity: 0.68;
+}
+
+.th-submission-feedback {
+    grid-column: 1 / -1;
+    padding-top: 4px;
+}
+
+.th-submission-feedback p {
+    margin-top: 8px;
+    opacity: 1;
+}
+
+.th-submission-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.th-submission-actions > span {
+    font-size: 0.85rem;
+    opacity: 0.65;
+}
+
 .th-activity-form,
 .th-quiz-form {
     display: grid;
