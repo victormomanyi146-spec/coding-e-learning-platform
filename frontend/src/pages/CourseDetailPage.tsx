@@ -38,26 +38,36 @@ function formatActivityType(activityType: string) {
 function LessonStatus({
     lesson,
     progressModule,
+    unlocked,
 }: {
     lesson: Lesson;
     progressModule: ProgressModule | undefined;
+    unlocked: boolean;
 }) {
     const progressLesson =
         progressModule?.lessons.find(
             (item) => item.id === lesson.id,
         );
 
+    const completed =
+        Boolean(progressLesson?.is_completed);
+
     return (
         <span
             className={
-                progressLesson?.is_completed
+                completed
                     ? "th-lesson-status is-complete"
-                    : "th-lesson-status"
+                    : unlocked
+                      ? "th-lesson-status"
+                      : "th-lesson-status is-locked"
             }
+            aria-hidden="true"
         >
-            {progressLesson?.is_completed
+            {completed
                 ? "✓"
-                : lesson.order}
+                : unlocked
+                  ? lesson.order
+                  : "🔒"}
         </span>
     );
 }
@@ -118,12 +128,6 @@ export default function CourseDetailPage() {
         [courseQuery.data],
     );
 
-    const selectedLesson =
-        lessons.find(
-            (lesson) =>
-                lesson.id === selectedLessonId,
-        ) ?? lessons[0];
-
     const progressByModule = useMemo(() => {
         const map =
             new Map<number, ProgressModule>();
@@ -140,6 +144,179 @@ export default function CourseDetailPage() {
 
         return map;
     }, [progressQuery.data]);
+
+    const isEnrolled =
+        Boolean(
+            progressQuery.data
+                ?.is_enrolled,
+        );
+
+    const lessonStates = useMemo(() => {
+        const states = new Map<
+            number,
+            {
+                completed: boolean;
+                unlocked: boolean;
+                lockReason: string;
+            }
+        >();
+
+        if (!courseQuery.data) {
+            return states;
+        }
+
+        courseQuery.data.modules.forEach(
+            (module, moduleIndex) => {
+                const moduleProgress =
+                    progressByModule.get(
+                        module.id,
+                    );
+
+                module.lessons.forEach(
+                    (lesson, lessonIndex) => {
+                        const progressLesson =
+                            moduleProgress?.lessons.find(
+                                (item) =>
+                                    item.id ===
+                                    lesson.id,
+                            );
+
+                        const completed =
+                            Boolean(
+                                progressLesson?.is_completed,
+                            );
+
+                        let unlocked = true;
+                        let lockReason = "";
+
+                        if (isEnrolled) {
+                            if (
+                                lessonIndex > 0
+                            ) {
+                                const previousLesson =
+                                    module.lessons[
+                                        lessonIndex - 1
+                                    ];
+
+                                const previousState =
+                                    states.get(
+                                        previousLesson.id,
+                                    );
+
+                                unlocked =
+                                    Boolean(
+                                        previousState?.completed,
+                                    );
+
+                                if (!unlocked) {
+                                    lockReason =
+                                        "Complete the previous lesson first.";
+                                }
+                            } else if (
+                                moduleIndex > 0
+                            ) {
+                                const previousModule =
+                                    courseQuery
+                                        .data
+                                        .modules[
+                                        moduleIndex - 1
+                                    ];
+
+                                const previousProgress =
+                                    progressByModule.get(
+                                        previousModule.id,
+                                    );
+
+                                unlocked =
+                                    Boolean(
+                                        previousProgress &&
+                                            previousProgress.lessons_total >
+                                                0 &&
+                                            previousProgress.lessons_completed ===
+                                                previousProgress.lessons_total,
+                                    );
+
+                                if (!unlocked) {
+                                    lockReason =
+                                        "Complete the previous module first.";
+                                }
+                            }
+                        }
+
+                        states.set(
+                            lesson.id,
+                            {
+                                completed,
+                                unlocked,
+                                lockReason,
+                            },
+                        );
+                    },
+                );
+            },
+        );
+
+        return states;
+    }, [
+        courseQuery.data,
+        progressByModule,
+        isEnrolled,
+    ]);
+
+    const recommendedLesson =
+        useMemo(() => {
+            if (lessons.length === 0) {
+                return undefined;
+            }
+
+            if (!isEnrolled) {
+                return lessons[0];
+            }
+
+            return (
+                lessons.find(
+                    (lesson) => {
+                        const state =
+                            lessonStates.get(
+                                lesson.id,
+                            );
+
+                        return (
+                            state?.unlocked &&
+                            !state.completed
+                        );
+                    },
+                ) ??
+                lessons[lessons.length - 1]
+            );
+        }, [
+            lessons,
+            isEnrolled,
+            lessonStates,
+        ]);
+
+    const selectedLesson =
+        lessons.find(
+            (lesson) =>
+                lesson.id === selectedLessonId,
+        ) ??
+        recommendedLesson ??
+        lessons[0];
+
+    const selectedLessonState =
+        selectedLesson
+            ? lessonStates.get(
+                  selectedLesson.id,
+              )
+            : undefined;
+
+    const recommendedRequiredActivities =
+        recommendedLesson
+            ? recommendedLesson.activities.filter(
+                  (activity) =>
+                      activity.is_required,
+              ).length
+            : 0;
 
     const selectedLessonIndex =
         selectedLesson
@@ -214,11 +391,6 @@ export default function CourseDetailPage() {
     const progress =
         progressQuery.data?.progress;
 
-    const isEnrolled =
-        Boolean(
-            progressQuery.data
-                ?.is_enrolled,
-        );
 
     return (
         <main className="th-course-page">
@@ -383,6 +555,70 @@ export default function CourseDetailPage() {
                 </div>
             </section>
 
+            {isEnrolled &&
+                progress &&
+                !progressQuery.isPending && (
+                    <section
+                        className={
+                            progressQuery.data
+                                ?.course_completed
+                                ? "th-next-action is-complete"
+                                : "th-next-action"
+                        }
+                    >
+                        <div>
+                            <span className="th-eyebrow">
+                                {progressQuery.data
+                                    ?.course_completed
+                                    ? "COURSE COMPLETE"
+                                    : "NEXT RECOMMENDED ACTION"}
+                            </span>
+
+                            <h2>
+                                {progressQuery.data
+                                    ?.course_completed
+                                    ? "You have completed this learning path."
+                                    : recommendedLesson
+                                      ? `Continue with ${recommendedLesson.title}`
+                                      : "Continue learning"}
+                            </h2>
+
+                            <p>
+                                {progressQuery.data
+                                    ?.course_completed
+                                    ? "Your course progress is complete. Your certificate is ready to review."
+                                    : recommendedLesson
+                                      ? recommendedRequiredActivities > 0
+                                          ? `Complete the ${recommendedRequiredActivities} required ${recommendedRequiredActivities === 1 ? "activity" : "activities"} in this lesson to keep progressing.`
+                                          : "Continue this lesson to keep your learning path moving."
+                                      : "Continue through the course outline to complete your learning path."}
+                            </p>
+                        </div>
+
+                        {progressQuery.data
+                            ?.course_completed ? (
+                            <Link
+                                className="th-primary-button"
+                                to="/certificates"
+                            >
+                                View certificates
+                            </Link>
+                        ) : recommendedLesson ? (
+                            <button
+                                className="th-primary-button"
+                                type="button"
+                                onClick={() =>
+                                    setSelectedLessonId(
+                                        recommendedLesson.id,
+                                    )
+                                }
+                            >
+                                Continue learning →
+                            </button>
+                        ) : null}
+                    </section>
+                )}
+
             <section className="th-learning-layout">
                 <aside className="th-learning-sidebar">
                     <div className="th-sidebar-heading">
@@ -442,40 +678,86 @@ export default function CourseDetailPage() {
                                     {module.lessons.map(
                                         (
                                             lesson,
-                                        ) => (
-                                            <button
-                                                className={
-                                                    selectedLesson?.id ===
-                                                    lesson.id
-                                                        ? "th-lesson-link is-active"
-                                                        : "th-lesson-link"
-                                                }
-                                                key={
-                                                    lesson.id
-                                                }
-                                                type="button"
-                                                onClick={() =>
-                                                    setSelectedLessonId(
-                                                        lesson.id,
-                                                    )
-                                                }
-                                            >
-                                                <LessonStatus
-                                                    lesson={
-                                                        lesson
-                                                    }
-                                                    progressModule={
-                                                        moduleProgress
-                                                    }
-                                                />
+                                        ) => {
+                                            const lessonState =
+                                                lessonStates.get(
+                                                    lesson.id,
+                                                );
 
-                                                <span>
-                                                    {
-                                                        lesson.title
+                                            const isLocked =
+                                                isEnrolled &&
+                                                !lessonState
+                                                    ?.unlocked;
+
+                                            return (
+                                                <button
+                                                    className={
+                                                        selectedLesson?.id ===
+                                                        lesson.id
+                                                            ? "th-lesson-link is-active"
+                                                            : isLocked
+                                                              ? "th-lesson-link is-locked"
+                                                              : "th-lesson-link"
                                                     }
-                                                </span>
-                                            </button>
-                                        ),
+                                                    key={
+                                                        lesson.id
+                                                    }
+                                                    type="button"
+                                                    disabled={
+                                                        isLocked
+                                                    }
+                                                    title={
+                                                        isLocked
+                                                            ? lessonState
+                                                                  ?.lockReason
+                                                            : undefined
+                                                    }
+                                                    aria-label={
+                                                        isLocked
+                                                            ? `${lesson.title}. ${lessonState?.lockReason}`
+                                                            : lesson.title
+                                                    }
+                                                    onClick={() =>
+                                                        setSelectedLessonId(
+                                                            lesson.id,
+                                                        )
+                                                    }
+                                                >
+                                                    <LessonStatus
+                                                        lesson={
+                                                            lesson
+                                                        }
+                                                        progressModule={
+                                                            moduleProgress
+                                                        }
+                                                        unlocked={
+                                                            lessonState
+                                                                ?.unlocked ??
+                                                            true
+                                                        }
+                                                    />
+
+                                                    <span>
+                                                        {
+                                                            lesson.title
+                                                        }
+
+                                                        {lessonState
+                                                            ?.completed && (
+                                                            <small className="th-lesson-state-label">
+                                                                Complete
+                                                            </small>
+                                                        )}
+
+                                                        {isLocked && (
+                                                            <small className="th-lesson-state-label">
+                                                                Locked
+                                                            </small>
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            );
+                                        },
                                     )}
                                 </div>
                             );
@@ -530,12 +812,9 @@ export default function CourseDetailPage() {
                                     </div>
 
                                     <span>
-                                        {
-                                            selectedLesson
-                                                .activities
-                                                .length
-                                        }{" "}
-                                        total
+                                        {selectedLessonState?.completed
+                                            ? "Lesson complete"
+                                            : `${selectedLesson.activities.length} total`}
                                     </span>
                                 </div>
 
@@ -630,7 +909,13 @@ export default function CourseDetailPage() {
                                     <span />
                                 )}
 
-                                {nextLesson ? (
+                                {nextLesson &&
+                                (
+                                    lessonStates.get(
+                                        nextLesson.id,
+                                    )?.unlocked ??
+                                    true
+                                ) ? (
                                     <button
                                         className="th-primary-button"
                                         type="button"
@@ -642,6 +927,11 @@ export default function CourseDetailPage() {
                                     >
                                         Next lesson →
                                     </button>
+                                ) : nextLesson ? (
+                                    <span className="th-completion-hint">
+                                        Complete this lesson to
+                                        unlock the next one.
+                                    </span>
                                 ) : (
                                     <span className="th-completion-hint">
                                         End of available
