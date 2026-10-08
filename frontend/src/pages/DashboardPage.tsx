@@ -13,6 +13,86 @@ import type {
     CourseProgressResponse,
 } from "../types/api";
 
+type DashboardAssessment = {
+    kind?: string;
+    title: string;
+    lesson_title?: string;
+    submitted_at: string;
+    score?: number | null;
+    max_score?: number | null;
+    percentage?: number | null;
+    status: string;
+    feedback?: string | null;
+};
+
+function assessmentTone(status: string) {
+    switch (status) {
+        case "Needs correction":
+            return "correction";
+
+        case "Pending":
+            return "pending";
+
+        case "Error":
+            return "error";
+
+        case "Not passed":
+            return "attention";
+
+        case "Quiz Passed":
+        case "Graded":
+            return "success";
+
+        default:
+            return "neutral";
+    }
+}
+
+function assessmentLabel(status: string) {
+    switch (status) {
+        case "Pending":
+            return "Awaiting review";
+
+        case "Error":
+            return "Execution error";
+
+        case "Not passed":
+            return "Retake recommended";
+
+        default:
+            return status;
+    }
+}
+
+function formatScore(
+    item: DashboardAssessment,
+) {
+    if (
+        typeof item.percentage === "number"
+    ) {
+        return `${Math.round(item.percentage)}%`;
+    }
+
+    return "—";
+}
+
+function formatDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        },
+    ).format(date);
+}
+
 export default function DashboardPage() {
     const {
         auth,
@@ -140,6 +220,36 @@ export default function DashboardPage() {
               )
             : 0;
 
+    const averageAssessmentScoreValues =
+        enrolledSnapshots
+            .map(
+                (snapshot) =>
+                    snapshot.progress
+                        ?.progress
+                        .average_score,
+            )
+            .filter(
+                (
+                    score,
+                ): score is number =>
+                    typeof score === "number",
+            );
+
+    const averageAssessmentScore =
+        averageAssessmentScoreValues.length > 0
+            ? Math.round(
+                  (
+                      averageAssessmentScoreValues.reduce(
+                          (total, score) =>
+                              total + score,
+                          0,
+                      ) /
+                      averageAssessmentScoreValues.length
+                  ) *
+                      10,
+              ) / 10
+            : null;
+
     const progressLoading =
         coursesQuery.isSuccess &&
         progressQueries.some(
@@ -154,13 +264,124 @@ export default function DashboardPage() {
                 query.isError,
         );
 
+    const assessmentItems =
+        enrolledSnapshots
+            .flatMap(
+                (snapshot) =>
+                    (
+                        snapshot.progress
+                            ?.recent_assessments ?? []
+                    ).map(
+                        (item) =>
+                            item as DashboardAssessment,
+                    ),
+            )
+            .filter(
+                (item) =>
+                    typeof item.title === "string" &&
+                    typeof item.status === "string",
+            )
+            .sort(
+                (a, b) =>
+                    new Date(
+                        b.submitted_at,
+                    ).getTime() -
+                    new Date(
+                        a.submitted_at,
+                    ).getTime(),
+            );
+
+    const attentionItems =
+        assessmentItems
+            .filter(
+                (item) =>
+                    [
+                        "Needs correction",
+                        "Pending",
+                        "Error",
+                        "Not passed",
+                    ].includes(
+                        item.status,
+                    ),
+            )
+            .slice(0, 3);
+
+    const latestAchievement =
+        assessmentItems.find(
+            (item) =>
+                (
+                    item.status ===
+                        "Graded" ||
+                    item.status ===
+                        "Quiz Passed"
+                ) &&
+                typeof item.percentage ===
+                    "number",
+        );
+
+    const activeSnapshot =
+        [
+            ...enrolledSnapshots
+                .filter(
+                    (snapshot) =>
+                        !snapshot.progress
+                            ?.course_completed,
+                ),
+        ].sort(
+            (a, b) =>
+                (
+                    b.progress
+                        ?.progress
+                        .overall_percentage ??
+                    0
+                ) -
+                (
+                    a.progress
+                        ?.progress
+                        .overall_percentage ??
+                    0
+                ),
+        )[0] ??
+        enrolledSnapshots[0];
+
+    const activePercentage =
+        Math.round(
+            activeSnapshot?.progress
+                ?.progress
+                .overall_percentage ?? 0,
+        );
+
+    const activeNextLesson =
+        activeSnapshot
+            ? activeSnapshot.progress?.modules
+                  .flatMap(
+                      (module) =>
+                          module.lessons,
+                  )
+                  .find(
+                      (lesson) =>
+                          !lesson.is_completed,
+                  )
+            : undefined;
+
+    const unreadCount =
+        notificationsQuery.data
+            ?.unread_count ?? 0;
+
     const username =
         auth?.user.username ??
         "Learner";
 
+    const hasActiveCourse =
+        Boolean(activeSnapshot);
+
+    const activeCourseComplete =
+        activeSnapshot?.progress
+            ?.course_completed === true;
+
     return (
         <div className="page dashboard-page">
-            <section className="dashboard-welcome">
+            <section className="dashboard-welcome dashboard-hero">
                 <div>
                     <span className="eyebrow">
                         STUDENT DASHBOARD
@@ -173,19 +394,32 @@ export default function DashboardPage() {
                     </h1>
 
                     <p>
-                        Your Tech Haven workspace
-                        is connected to the Django
-                        learning engine.
+                        Pick up where you left off,
+                        track your progress, and keep
+                        turning practice into proof.
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={logout}
-                >
-                    Sign out
-                </button>
+                <div className="dashboard-hero-actions">
+                    {hasActiveCourse && (
+                        <Link
+                            to={`/courses/${activeSnapshot.course.slug}`}
+                            className="primary-button"
+                        >
+                            {activeCourseComplete
+                                ? "Review your course →"
+                                : "Continue learning →"}
+                        </Link>
+                    )}
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={logout}
+                    >
+                        Sign out
+                    </button>
+                </div>
             </section>
 
             <section className="dashboard-stats">
@@ -233,336 +467,547 @@ export default function DashboardPage() {
                         courses completed
                     </small>
                 </article>
+
+                <article>
+                    <span>Assessment average</span>
+
+                    <strong>
+                        {coursesQuery.isPending ||
+                        progressLoading
+                            ? "—"
+                            : averageAssessmentScore !== null
+                              ? `${averageAssessmentScore}%`
+                              : "—"}
+                    </strong>
+
+                    <small>
+                        best scored attempts
+                    </small>
+                </article>
             </section>
 
-            <section className="dashboard-grid">
-                <div className="dashboard-panel">
-                    <div className="panel-heading">
-                        <div>
-                            <span className="eyebrow">
-                                MY LEARNING
-                            </span>
+            {coursesQuery.isPending && (
+                <div className="status-card">
+                    Loading your learning workspace...
+                </div>
+            )}
 
-                            <h2>
-                                Keep building momentum.
-                            </h2>
-                        </div>
+            {coursesQuery.isError && (
+                <div className="status-card error">
+                    Unable to load your learning workspace.
+                </div>
+            )}
+
+            {coursesQuery.isSuccess &&
+                progressLoading && (
+                    <div className="status-card">
+                        Checking your course progress...
+                    </div>
+                )}
+
+            {coursesQuery.isSuccess &&
+                progressError && (
+                    <div className="status-card error">
+                        Some course progress data could not
+                        be loaded. You can continue from the
+                        Courses page.
+                    </div>
+                )}
+
+            {coursesQuery.isSuccess &&
+                !progressLoading &&
+                enrolledSnapshots.length === 0 && (
+                    <section className="dashboard-empty">
+                        <span className="eyebrow">
+                            START HERE
+                        </span>
+
+                        <h2>
+                            Your next step is waiting.
+                        </h2>
+
+                        <p>
+                            Choose a course from the Tech Haven
+                            catalog and start building practical
+                            skills through lessons, activities,
+                            and assessments.
+                        </p>
 
                         <Link
                             to="/courses"
-                            className="text-link"
+                            className="primary-button"
                         >
-                            View catalog →
+                            Explore courses →
                         </Link>
-                    </div>
+                    </section>
+                )}
 
-                    {coursesQuery.isPending && (
-                        <div className="status-card">
-                            Loading your learning
-                            workspace...
-                        </div>
-                    )}
+            {enrolledSnapshots.length > 0 && (
+                <>
+                    <section className="dashboard-command-grid">
+                        <article className="dashboard-focus-card">
+                            <div className="dashboard-focus-main">
+                                <span className="eyebrow">
+                                    {activeCourseComplete
+                                        ? "COURSE COMPLETE"
+                                        : "CONTINUE LEARNING"}
+                                </span>
 
-                    {coursesQuery.isError && (
-                        <div className="status-card error">
-                            Unable to load your
-                            learning workspace.
-                        </div>
-                    )}
-
-                    {coursesQuery.isSuccess &&
-                        progressLoading && (
-                            <div className="status-card">
-                                Checking your course
-                                progress...
-                            </div>
-                        )}
-
-                    {coursesQuery.isSuccess &&
-                        progressError && (
-                            <div className="status-card error">
-                                Some course progress
-                                data could not be
-                                loaded. You can
-                                continue from the
-                                Courses page.
-                            </div>
-                        )}
-
-                    {coursesQuery.isSuccess &&
-                        !progressLoading &&
-                        enrolledSnapshots.length ===
-                            0 && (
-                            <div className="status-card">
-                                <strong>
-                                    Start your first
-                                    learning path.
-                                </strong>
+                                <h2>
+                                    {activeSnapshot?.course.title}
+                                </h2>
 
                                 <p>
-                                    Choose a course from
-                                    the Tech Haven
-                                    catalog and begin
-                                    building practical
-                                    skills.
+                                    {activeCourseComplete
+                                        ? "You have completed this learning path. Review your work or open your credential."
+                                        : activeNextLesson
+                                          ? `Next lesson: ${activeNextLesson.title}.`
+                                          : "Your next accessible lesson is ready."}
                                 </p>
+
+                                <div className="dashboard-action-row">
+                                    <Link
+                                        to={
+                                            activeSnapshot
+                                                ? `/courses/${activeSnapshot.course.slug}`
+                                                : "/courses"
+                                        }
+                                        className="primary-button"
+                                    >
+                                        {activeCourseComplete
+                                            ? "Review course"
+                                            : "Continue learning"}
+                                    </Link>
+
+                                    {activeCourseComplete && (
+                                        <Link
+                                            to="/certificates"
+                                            className="secondary-button"
+                                        >
+                                            View certificates
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="dashboard-focus-progress">
+                                <span>Course progress</span>
+
+                                <strong>
+                                    {activePercentage}%
+                                </strong>
+
+                                <div
+                                    className="th-progress-track"
+                                    role="progressbar"
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-valuenow={
+                                        activePercentage
+                                    }
+                                    aria-label={`${activeSnapshot?.course.title} progress`}
+                                >
+                                    <span
+                                        style={{
+                                            width: `${activePercentage}%`,
+                                        }}
+                                    />
+                                </div>
+
+                                <small>
+                                    {
+                                        activeSnapshot?.progress
+                                            ?.progress
+                                            .lessons_completed
+                                    }
+                                    /
+                                    {
+                                        activeSnapshot?.progress
+                                            ?.progress
+                                            .lessons_total
+                                    }{" "}
+                                    lessons complete
+                                </small>
+                            </div>
+                        </article>
+
+                        <aside className="dashboard-attention-card">
+                            <div className="panel-heading">
+                                <div>
+                                    <span className="eyebrow">
+                                        ASSESSMENT ATTENTION
+                                    </span>
+
+                                    <h2>
+                                        {attentionItems.length > 0
+                                            ? "Action needed"
+                                            : "You are clear"}
+                                    </h2>
+                                </div>
+
+                                <Link
+                                    to="/assessments"
+                                    className="text-link"
+                                >
+                                    Open center →
+                                </Link>
+                            </div>
+
+                            {attentionItems.length === 0 ? (
+                                <div className="dashboard-attention-empty">
+                                    <strong>
+                                        No assessments need your
+                                        attention.
+                                    </strong>
+
+                                    <p>
+                                        Recent practical work and
+                                        quizzes are not waiting for a
+                                        correction, review, or retry.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="dashboard-attention-list">
+                                    {attentionItems.map(
+                                        (
+                                            item,
+                                            index,
+                                        ) => (
+                                            <Link
+                                                key={`${item.kind ?? "assessment"}-${item.title}-${item.submitted_at}-${index}`}
+                                                to="/assessments"
+                                                className="dashboard-attention-item"
+                                            >
+                                                <div>
+                                                    <strong>
+                                                        {item.title}
+                                                    </strong>
+
+                                                    <small>
+                                                        {
+                                                            item.lesson_title
+                                                        }
+                                                    </small>
+                                                </div>
+
+                                                <span
+                                                    className={`dashboard-status-badge ${assessmentTone(item.status)}`}
+                                                >
+                                                    {assessmentLabel(
+                                                        item.status,
+                                                    )}
+                                                </span>
+                                            </Link>
+                                        ),
+                                    )}
+                                </div>
+                            )}
+                        </aside>
+                    </section>
+
+                    <section className="dashboard-content-grid">
+                        <div className="dashboard-panel">
+                            <div className="panel-heading">
+                                <div>
+                                    <span className="eyebrow">
+                                        MY LEARNING
+                                    </span>
+
+                                    <h2>
+                                        Course progress
+                                    </h2>
+                                </div>
 
                                 <Link
                                     to="/courses"
-                                    className="primary-button"
+                                    className="text-link"
                                 >
-                                    Explore courses
+                                    View catalog →
                                 </Link>
                             </div>
-                        )}
 
-                    {enrolledSnapshots.length >
-                        0 && (
-                        <div className="mini-course-grid">
-                            {enrolledSnapshots.map(
-                                ({
-                                    course,
-                                    progress,
-                                }) => {
-                                    const percentage =
-                                        Math.round(
-                                            progress
-                                                ?.progress
-                                                .overall_percentage ??
+                            <div className="dashboard-course-list">
+                                {enrolledSnapshots.map(
+                                    ({
+                                        course,
+                                        progress,
+                                    }) => {
+                                        const percentage =
+                                            Math.round(
+                                                progress
+                                                    ?.progress
+                                                    .overall_percentage ??
                                                 0,
-                                        );
+                                            );
 
-                                    return (
-                                        <article
-                                            key={
-                                                course.id
-                                            }
-                                            className="mini-course-card"
-                                        >
+                                        const isComplete =
+                                            progress
+                                                ?.course_completed ===
+                                            true;
+
+                                        return (
+                                            <article
+                                                key={
+                                                    course.id
+                                                }
+                                                className="dashboard-course-row"
+                                            >
+                                                <div className="dashboard-course-row-main">
+                                                    <div>
+                                                        <span className="dashboard-course-level">
+                                                            {
+                                                                course.level
+                                                            }
+                                                        </span>
+
+                                                        <h3>
+                                                            {
+                                                                course.title
+                                                            }
+                                                        </h3>
+
+                                                        <p>
+                                                            {
+                                                                course.description
+                                                            }
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="dashboard-course-result">
+                                                        <strong>
+                                                            {
+                                                                percentage
+                                                            }
+                                                            %
+                                                        </strong>
+
+                                                        <small>
+                                                            {
+                                                                progress
+                                                                    ?.progress
+                                                                    .lessons_completed
+                                                            }
+                                                            /
+                                                            {
+                                                                progress
+                                                                    ?.progress
+                                                                    .lessons_total
+                                                            }{" "}
+                                                            lessons
+                                                        </small>
+                                                    </div>
+                                                </div>
+
+                                                <div className="dashboard-course-progress">
+                                                    <div className="dashboard-inline-progress">
+                                                        <span
+                                                            style={{
+                                                                width: `${percentage}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    <Link
+                                                        to={`/courses/${course.slug}`}
+                                                        className="text-link"
+                                                    >
+                                                        {isComplete
+                                                            ? "Review course →"
+                                                            : "Continue →"}
+                                                    </Link>
+                                                </div>
+                                            </article>
+                                        );
+                                    },
+                                )}
+                            </div>
+
+                            <div className="dashboard-overall-progress">
+                                <div>
+                                    <span>
+                                        Average completion
+                                    </span>
+
+                                    <strong>
+                                        {averageCompletion}%
+                                    </strong>
+                                </div>
+
+                                <p>
+                                    Your average learning progress
+                                    across all enrolled courses.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="dashboard-side-stack">
+                            <article className="dashboard-panel dashboard-achievement">
+                                <div className="panel-heading">
+                                    <div>
+                                        <span className="eyebrow">
+                                            RECENT ACHIEVEMENT
+                                        </span>
+
+                                        <h2>
+                                            {latestAchievement
+                                                ? "Latest result"
+                                                : "Your next result"}
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                {latestAchievement ? (
+                                    <div className="dashboard-achievement-result">
+                                        <div>
                                             <span>
                                                 {
-                                                    course.level
+                                                    latestAchievement.kind ===
+                                                    "quiz"
+                                                        ? "QUIZ"
+                                                        : "PRACTICAL ASSESSMENT"
                                                 }
                                             </span>
 
                                             <h3>
                                                 {
-                                                    course.title
+                                                    latestAchievement.title
                                                 }
                                             </h3>
 
                                             <p>
                                                 {
-                                                    course.description
+                                                    latestAchievement.lesson_title
                                                 }
                                             </p>
+                                        </div>
 
-                                            <div
-                                                style={{
-                                                    marginTop:
-                                                        "16px",
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        display:
-                                                            "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        gap:
-                                                            "12px",
-                                                        marginBottom:
-                                                            "7px",
-                                                    }}
-                                                >
-                                                    <small>
-                                                        Progress
-                                                    </small>
-
-                                                    <strong>
-                                                        {
-                                                            percentage
-                                                        }
-                                                        %
-                                                    </strong>
-                                                </div>
-
-                                                <div
-                                                    className="th-progress-track"
-                                                    role="progressbar"
-                                                    aria-valuemin={
-                                                        0
-                                                    }
-                                                    aria-valuemax={
-                                                        100
-                                                    }
-                                                    aria-valuenow={
-                                                        percentage
-                                                    }
-                                                    aria-label={`${course.title} progress`}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            width: `${percentage}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                style={{
-                                                    display:
-                                                        "flex",
-                                                    justifyContent:
-                                                        "space-between",
-                                                    gap:
-                                                        "12px",
-                                                    alignItems:
-                                                        "center",
-                                                    marginTop:
-                                                        "16px",
-                                                }}
-                                            >
-                                                <small>
-                                                    {
-                                                        progress
-                                                            ?.progress
-                                                            .lessons_completed
-                                                    }
-                                                    /
-                                                    {
-                                                        progress
-                                                            ?.progress
-                                                            .lessons_total
-                                                    }{" "}
-                                                    lessons
-                                                </small>
-
-                                                <Link
-                                                    to={`/courses/${course.slug}`}
-                                                    className="text-link"
-                                                >
-                                                    {progress
-                                                        ?.course_completed
-                                                        ? "Review course →"
-                                                        : "Continue →"}
-                                                </Link>
-                                            </div>
-                                        </article>
-                                    );
-                                },
-                            )}
-                        </div>
-                    )}
-
-                    {enrolledSnapshots.length >
-                        0 && (
-                        <div
-                            style={{
-                                marginTop:
-                                    "20px",
-                            }}
-                        >
-                            <span className="eyebrow">
-                                OVERALL PROGRESS
-                            </span>
-
-                            <p
-                                className="muted-text"
-                                style={{
-                                    marginTop:
-                                        "8px",
-                                }}
-                            >
-                                Your average completion
-                                across enrolled courses
-                                is{" "}
-                                <strong>
-                                    {
-                                        averageCompletion
-                                    }
-                                    %
-                                </strong>
-                                .
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                <aside className="dashboard-panel notification-panel">
-                    <div className="panel-heading">
-                        <div>
-                            <span className="eyebrow">
-                                ACTIVITY
-                            </span>
-
-                            <h2>
-                                Notifications
-                            </h2>
-                        </div>
-
-                        <Link
-                            to="/notifications"
-                            className="text-link"
-                        >
-                            View all →
-                        </Link>
-                    </div>
-
-                    {notificationsQuery.isPending && (
-                        <p className="muted-text">
-                            Loading notifications...
-                        </p>
-                    )}
-
-                    {notificationsQuery.isError && (
-                        <p className="muted-text">
-                            Notifications could not
-                            be loaded.
-                        </p>
-                    )}
-
-                    {notificationsQuery.isSuccess &&
-                        notificationsQuery.data.results.length ===
-                            0 && (
-                            <p className="muted-text">
-                                No notifications yet.
-                            </p>
-                        )}
-
-                    {notificationsQuery.isSuccess &&
-                        notificationsQuery.data.results
-                            .slice(0, 4)
-                            .map(
-                                (
-                                    notification,
-                                ) => (
-                                    <div
-                                        key={
-                                            notification.id
-                                        }
-                                        className={
-                                            notification.is_read
-                                                ? "mini-notification"
-                                                : "mini-notification unread"
-                                        }
-                                    >
                                         <strong>
+                                            {formatScore(
+                                                latestAchievement,
+                                            )}
+                                        </strong>
+
+                                        <small>
                                             {
-                                                notification.title
+                                                latestAchievement.status
                                             }
+                                            {" · "}
+                                            {formatDate(
+                                                latestAchievement.submitted_at,
+                                            )}
+                                        </small>
+                                    </div>
+                                ) : (
+                                    <div className="dashboard-achievement-empty">
+                                        <strong>
+                                            Submit your first
+                                            assessment.
                                         </strong>
 
                                         <p>
-                                            {
-                                                notification.message
-                                            }
+                                            Scores and quiz results
+                                            will appear here as you
+                                            build your portfolio of
+                                            proof.
                                         </p>
+
+                                        <Link
+                                            to="/assessments"
+                                            className="text-link"
+                                        >
+                                            View assessments →
+                                        </Link>
                                     </div>
-                                ),
-                            )}
-                </aside>
-            </section>
+                                )}
+                            </article>
+
+                            <article className="dashboard-panel dashboard-notifications">
+                                <div className="panel-heading">
+                                    <div>
+                                        <span className="eyebrow">
+                                            ACTIVITY
+                                        </span>
+
+                                        <h2>
+                                            Notifications
+                                        </h2>
+                                    </div>
+
+                                    <Link
+                                        to="/notifications"
+                                        className="text-link"
+                                    >
+                                        View all →
+                                    </Link>
+                                </div>
+
+                                <div className="dashboard-notification-summary">
+                                    <strong>
+                                        {unreadCount}
+                                    </strong>
+
+                                    <span>
+                                        unread
+                                    </span>
+                                </div>
+
+                                {notificationsQuery.isPending && (
+                                    <p className="muted-text">
+                                        Loading notifications...
+                                    </p>
+                                )}
+
+                                {notificationsQuery.isError && (
+                                    <p className="muted-text">
+                                        Notifications could not be
+                                        loaded.
+                                    </p>
+                                )}
+
+                                {notificationsQuery.isSuccess &&
+                                    notificationsQuery.data.results
+                                        .length === 0 && (
+                                        <p className="muted-text">
+                                            No notifications yet.
+                                        </p>
+                                    )}
+
+                                {notificationsQuery.isSuccess &&
+                                    notificationsQuery.data.results
+                                        .slice(0, 3)
+                                        .map(
+                                            (
+                                                notification,
+                                            ) => (
+                                                <div
+                                                    key={
+                                                        notification.id
+                                                    }
+                                                    className={
+                                                        notification.is_read
+                                                            ? "mini-notification"
+                                                            : "mini-notification unread"
+                                                    }
+                                                >
+                                                    <strong>
+                                                        {
+                                                            notification.title
+                                                        }
+                                                    </strong>
+
+                                                    <p>
+                                                        {
+                                                            notification.message
+                                                        }
+                                                    </p>
+                                                </div>
+                                            ),
+                                        )}
+                            </article>
+                        </div>
+                    </section>
+                </>
+            )}
 
             <section className="dashboard-cta">
                 <div>
@@ -575,18 +1020,23 @@ export default function DashboardPage() {
                     </h2>
 
                     <p>
-                        Every learning activity now
-                        contributes to measurable
-                        progress, assessments, and
-                        credentials.
+                        Your dashboard turns course progress,
+                        assessments, corrections, and results
+                        into one practical next-step loop.
                     </p>
                 </div>
 
                 <Link
-                    to="/courses"
+                    to={
+                        hasActiveCourse
+                            ? `/courses/${activeSnapshot?.course.slug}`
+                            : "/courses"
+                    }
                     className="primary-button"
                 >
-                    Explore learning
+                    {hasActiveCourse
+                        ? "Continue learning"
+                        : "Explore learning"}
                 </Link>
             </section>
         </div>
