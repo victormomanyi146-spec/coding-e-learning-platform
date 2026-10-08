@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
@@ -15,6 +16,13 @@ import type {
     QuizDetail,
 } from "../types/api";
 const EMPTY_SUBMISSIONS: import("../types/api").Submission[] = [];
+
+type SubmissionStatusFilter =
+    | "all"
+    | "pending"
+    | "graded"
+    | "correction"
+    | "error";
 
 function formatDate(value: string) {
     return new Intl.DateTimeFormat(undefined, {
@@ -121,6 +129,21 @@ export default function AssessmentCenterPage() {
         queryFn: () => getSubmissions(token),
         enabled: Boolean(token),
     });
+
+    const [
+        submissionSearch,
+        setSubmissionSearch,
+    ] = useState("");
+
+    const [
+        submissionStatusFilter,
+        setSubmissionStatusFilter,
+    ] = useState<SubmissionStatusFilter>("all");
+
+    const [
+        submissionCourseFilter,
+        setSubmissionCourseFilter,
+    ] = useState("all");
 
     const quizzesQuery = useQuery({
         queryKey: ["assessment-quizzes", token],
@@ -273,6 +296,105 @@ export default function AssessmentCenterPage() {
             (submission) =>
                 submission.score === null,
         );
+
+    const submissionCourseOptions =
+        useMemo(
+            () =>
+                Array.from(
+                    new Set(
+                        submissions.map(
+                            (submission) =>
+                                submission.course.title,
+                        ),
+                    ),
+                ).sort(),
+            [submissions],
+        );
+
+    const filteredSubmissionHistory =
+        useMemo(() => {
+            const normalizedSearch =
+                submissionSearch.trim().toLowerCase();
+
+            return submissions
+                .filter((submission) => {
+                    if (
+                        submissionStatusFilter ===
+                        "all"
+                    ) {
+                        return true;
+                    }
+
+                    if (
+                        submissionStatusFilter ===
+                        "pending"
+                    ) {
+                        return (
+                            submission.status !==
+                                "correction" &&
+                            submission.status !==
+                                "error" &&
+                            submission.score === null
+                        );
+                    }
+
+                    if (
+                        submissionStatusFilter ===
+                        "graded"
+                    ) {
+                        return (
+                            submission.status !==
+                                "correction" &&
+                            submission.status !==
+                                "error" &&
+                            submission.score !== null
+                        );
+                    }
+
+                    return (
+                        submission.status ===
+                        submissionStatusFilter
+                    );
+                })
+                .filter(
+                    (submission) =>
+                        submissionCourseFilter ===
+                            "all" ||
+                        submission.course.title ===
+                            submissionCourseFilter,
+                )
+                .filter((submission) => {
+                    if (!normalizedSearch) {
+                        return true;
+                    }
+
+                    return [
+                        submission.activity.title,
+                        submission.activity.activity_type,
+                        submission.course.title,
+                    ].some((value) =>
+                        value
+                            .toLowerCase()
+                            .includes(
+                                normalizedSearch,
+                            ),
+                    );
+                })
+                .sort(
+                    (first, second) =>
+                        new Date(
+                            second.submitted_at,
+                        ).getTime() -
+                        new Date(
+                            first.submitted_at,
+                        ).getTime(),
+                );
+        }, [
+            submissions,
+            submissionSearch,
+            submissionStatusFilter,
+            submissionCourseFilter,
+        ]);
 
     const averageScore =
         gradedSubmissions.length > 0
@@ -593,6 +715,208 @@ export default function AssessmentCenterPage() {
                         </article>
                     </div>
                 </aside>
+            </section>
+
+            <section className="dashboard-panel">
+                <div className="panel-heading">
+                    <div>
+                        <span className="eyebrow">
+                            ASSESSMENT HISTORY
+                        </span>
+
+                        <h2>
+                            Review your practical work
+                        </h2>
+                    </div>
+
+                    <span className="text-link">
+                        {filteredSubmissionHistory.length} matching
+                    </span>
+                </div>
+
+                <div className="assessment-options">
+                    <article>
+                        <label htmlFor="learner-submission-search">
+                            Search
+                        </label>
+
+                        <input
+                            id="learner-submission-search"
+                            type="search"
+                            value={submissionSearch}
+                            onChange={(event) =>
+                                setSubmissionSearch(
+                                    event.target.value,
+                                )
+                            }
+                            placeholder="Activity or course..."
+                        />
+                    </article>
+
+                    <article>
+                        <label htmlFor="learner-submission-course">
+                            Course
+                        </label>
+
+                        <select
+                            id="learner-submission-course"
+                            value={submissionCourseFilter}
+                            onChange={(event) =>
+                                setSubmissionCourseFilter(
+                                    event.target.value,
+                                )
+                            }
+                        >
+                            <option value="all">
+                                All courses
+                            </option>
+
+                            {submissionCourseOptions.map(
+                                (course) => (
+                                    <option
+                                        key={course}
+                                        value={course}
+                                    >
+                                        {course}
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                    </article>
+
+                    <article>
+                        <label htmlFor="learner-submission-status">
+                            Status
+                        </label>
+
+                        <select
+                            id="learner-submission-status"
+                            value={submissionStatusFilter}
+                            onChange={(event) =>
+                                setSubmissionStatusFilter(
+                                    event.target
+                                        .value as SubmissionStatusFilter,
+                                )
+                            }
+                        >
+                            <option value="all">
+                                All statuses
+                            </option>
+                            <option value="pending">
+                                Awaiting review
+                            </option>
+                            <option value="graded">
+                                Graded
+                            </option>
+                            <option value="correction">
+                                Needs correction
+                            </option>
+                            <option value="error">
+                                Execution errors
+                            </option>
+                        </select>
+                    </article>
+
+                    <article>
+                        <span className="feature-number">
+                            FILTERS
+                        </span>
+
+                        <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => {
+                                setSubmissionSearch("");
+                                setSubmissionStatusFilter(
+                                    "all",
+                                );
+                                setSubmissionCourseFilter(
+                                    "all",
+                                );
+                            }}
+                        >
+                            Reset filters
+                        </button>
+                    </article>
+                </div>
+
+                {filteredSubmissionHistory.length === 0 ? (
+                    <div className="status-card">
+                        <strong>
+                            No submissions match these filters.
+                        </strong>
+
+                        <p>
+                            Try a different course, status,
+                            or search term.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="assessment-list">
+                        {filteredSubmissionHistory.map(
+                            (submission) => (
+                                <article
+                                    key={submission.id}
+                                    className="assessment-card"
+                                >
+                                    <div>
+                                        <span className="course-level">
+                                            {
+                                                submission
+                                                    .activity
+                                                    .activity_type
+                                            }
+                                        </span>
+
+                                        <h3>
+                                            {
+                                                submission
+                                                    .activity
+                                                    .title
+                                            }
+                                        </h3>
+
+                                        <p>
+                                            {
+                                                submission
+                                                    .course
+                                                    .title
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <div className="assessment-card-meta">
+                                        <span>
+                                            {statusLabel(
+                                                submission.status,
+                                            )}
+                                        </span>
+
+                                        <strong>
+                                            {submission.score ===
+                                            null
+                                                ? "Pending"
+                                                : `${submission.score}/${submission.activity.max_score}`}
+                                        </strong>
+
+                                        <small>
+                                            {formatDate(
+                                                submission.submitted_at,
+                                            )}
+                                        </small>
+
+                                        <Link
+                                            to={`/assessments/submissions/${submission.id}`}
+                                            className="text-link"
+                                        >
+                                            View assessment
+                                        </Link>
+                                    </div>
+                                </article>
+                            ),
+                        )}
+                    </div>
+                )}
             </section>
 
                         <section className="dashboard-panel">
