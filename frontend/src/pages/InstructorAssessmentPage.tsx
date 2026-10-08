@@ -146,7 +146,7 @@ export default function InstructorAssessmentPage() {
         filter,
         setFilter,
     ] = useState<Filter>(
-        "pending",
+        "all",
     );
 
     const [
@@ -360,7 +360,7 @@ export default function InstructorAssessmentPage() {
 
     function resetFilters() {
         setFilter(
-            "pending",
+            "all",
         );
 
         setSearch("");
