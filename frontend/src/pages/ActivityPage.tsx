@@ -1,4 +1,4 @@
-﻿import {
+import {
     useMemo,
     useState,
 } from "react";
@@ -158,7 +158,7 @@ export default function ActivityPage() {
         });
 
     const activity =
-        useMemo(() => {
+        (() => {
             const course =
                 courseQuery.data;
 
@@ -210,11 +210,7 @@ export default function ActivityPage() {
             }
 
             return undefined;
-        }, [
-            courseQuery.data,
-            lessonId,
-            activityId,
-        ]);
+        })();
 
     const latestSubmission =
         useMemo(() => {

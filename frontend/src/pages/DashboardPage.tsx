@@ -1,10 +1,17 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import {
+    useQueries,
+    useQuery,
+} from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
     getCourses,
+    getCourseProgress,
     getNotifications,
 } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import type {
+    CourseProgressResponse,
+} from "../types/api";
 
 export default function DashboardPage() {
     const {
@@ -33,6 +40,119 @@ export default function DashboardPage() {
                 getNotifications(token),
             enabled: Boolean(token),
         });
+
+    const courses =
+        coursesQuery.data?.results ?? [];
+
+    const progressQueries =
+        useQueries({
+            queries: courses.map(
+                (course) => ({
+                    queryKey: [
+                        "dashboard-progress",
+                        token,
+                        course.slug,
+                    ],
+                    queryFn:
+                        async (): Promise<
+                            CourseProgressResponse | null
+                        > => {
+                            try {
+                                return await getCourseProgress(
+                                    course.slug,
+                                    token,
+                                );
+                            } catch (error) {
+                                if (
+                                    error instanceof
+                                        Error &&
+                                    error.message
+                                        .toLowerCase()
+                                        .includes(
+                                            "enrollment required",
+                                        )
+                                ) {
+                                    return null;
+                                }
+
+                                throw error;
+                            }
+                        },
+                    enabled:
+                        Boolean(token) &&
+                        coursesQuery.isSuccess,
+                    retry: false,
+                }),
+            ),
+        });
+
+    const courseSnapshots =
+        courses.map(
+            (
+                course,
+                index,
+            ) => ({
+                course,
+                progress:
+                    progressQueries[index]
+                        ?.data ?? null,
+                isPending:
+                    progressQueries[index]
+                        ?.isPending ?? false,
+                isError:
+                    progressQueries[index]
+                        ?.isError ?? false,
+            }),
+        );
+
+    const enrolledSnapshots =
+        courseSnapshots.filter(
+            (snapshot) =>
+                snapshot.progress
+                    ?.is_enrolled === true,
+        );
+
+    const completedCount =
+        enrolledSnapshots.filter(
+            (snapshot) =>
+                snapshot.progress
+                    ?.course_completed === true,
+        ).length;
+
+    const averageCompletion =
+        enrolledSnapshots.length > 0
+            ? Math.round(
+                  enrolledSnapshots.reduce(
+                      (
+                          total,
+                          snapshot,
+                      ) =>
+                          total +
+                          (
+                              snapshot.progress
+                                  ?.progress
+                                  .overall_percentage ??
+                              0
+                          ),
+                      0,
+                  ) /
+                      enrolledSnapshots.length,
+              )
+            : 0;
+
+    const progressLoading =
+        coursesQuery.isSuccess &&
+        progressQueries.some(
+            (query) =>
+                query.isPending,
+        );
+
+    const progressError =
+        coursesQuery.isSuccess &&
+        progressQueries.some(
+            (query) =>
+                query.isError,
+        );
 
     const username =
         auth?.user.username ??
@@ -70,36 +190,47 @@ export default function DashboardPage() {
 
             <section className="dashboard-stats">
                 <article>
-                    <span>Courses</span>
+                    <span>Catalog</span>
+
                     <strong>
-                        {coursesQuery.data?.count ??
-                            "—"}
+                        {coursesQuery.isPending
+                            ? "—"
+                            : coursesQuery.data?.count ??
+                              "—"}
                     </strong>
+
                     <small>
-                        available in the catalog
+                        courses available
                     </small>
                 </article>
 
                 <article>
-                    <span>Unread</span>
+                    <span>Enrolled</span>
+
                     <strong>
-                        {notificationsQuery.data
-                            ?.unread_count ??
-                            "—"}
+                        {coursesQuery.isPending ||
+                        progressLoading
+                            ? "—"
+                            : enrolledSnapshots.length}
                     </strong>
+
                     <small>
-                        learning notifications
+                        learning paths started
                     </small>
                 </article>
 
                 <article>
-                    <span>Account</span>
+                    <span>Completed</span>
+
                     <strong>
-                        {auth?.user.role ??
-                            "STUDENT"}
+                        {coursesQuery.isPending ||
+                        progressLoading
+                            ? "—"
+                            : completedCount}
                     </strong>
+
                     <small>
-                        authenticated profile
+                        courses completed
                     </small>
                 </article>
             </section>
@@ -109,12 +240,11 @@ export default function DashboardPage() {
                     <div className="panel-heading">
                         <div>
                             <span className="eyebrow">
-                                EXPLORE
+                                MY LEARNING
                             </span>
 
                             <h2>
-                                Continue building
-                                your skills.
+                                Keep building momentum.
                             </h2>
                         </div>
 
@@ -128,46 +258,233 @@ export default function DashboardPage() {
 
                     {coursesQuery.isPending && (
                         <div className="status-card">
-                            Loading the course
-                            catalog...
+                            Loading your learning
+                            workspace...
                         </div>
                     )}
 
                     {coursesQuery.isError && (
                         <div className="status-card error">
-                            Unable to load the course
-                            catalog.
+                            Unable to load your
+                            learning workspace.
                         </div>
                     )}
 
-                    {coursesQuery.isSuccess && (
+                    {coursesQuery.isSuccess &&
+                        progressLoading && (
+                            <div className="status-card">
+                                Checking your course
+                                progress...
+                            </div>
+                        )}
+
+                    {coursesQuery.isSuccess &&
+                        progressError && (
+                            <div className="status-card error">
+                                Some course progress
+                                data could not be
+                                loaded. You can
+                                continue from the
+                                Courses page.
+                            </div>
+                        )}
+
+                    {coursesQuery.isSuccess &&
+                        !progressLoading &&
+                        enrolledSnapshots.length ===
+                            0 && (
+                            <div className="status-card">
+                                <strong>
+                                    Start your first
+                                    learning path.
+                                </strong>
+
+                                <p>
+                                    Choose a course from
+                                    the Tech Haven
+                                    catalog and begin
+                                    building practical
+                                    skills.
+                                </p>
+
+                                <Link
+                                    to="/courses"
+                                    className="primary-button"
+                                >
+                                    Explore courses
+                                </Link>
+                            </div>
+                        )}
+
+                    {enrolledSnapshots.length >
+                        0 && (
                         <div className="mini-course-grid">
-                            {coursesQuery.data.results
-                                .slice(0, 3)
-                                .map((course) => (
-                                    <article
-                                        key={course.id}
-                                        className="mini-course-card"
-                                    >
-                                        <span>
-                                            {
-                                                course.level
-                                            }
-                                        </span>
+                            {enrolledSnapshots.map(
+                                ({
+                                    course,
+                                    progress,
+                                }) => {
+                                    const percentage =
+                                        Math.round(
+                                            progress
+                                                ?.progress
+                                                .overall_percentage ??
+                                                0,
+                                        );
 
-                                        <h3>
-                                            {
-                                                course.title
+                                    return (
+                                        <article
+                                            key={
+                                                course.id
                                             }
-                                        </h3>
+                                            className="mini-course-card"
+                                        >
+                                            <span>
+                                                {
+                                                    course.level
+                                                }
+                                            </span>
 
-                                        <p>
-                                            {
-                                                course.description
-                                            }
-                                        </p>
-                                    </article>
-                                ))}
+                                            <h3>
+                                                {
+                                                    course.title
+                                                }
+                                            </h3>
+
+                                            <p>
+                                                {
+                                                    course.description
+                                                }
+                                            </p>
+
+                                            <div
+                                                style={{
+                                                    marginTop:
+                                                        "16px",
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display:
+                                                            "flex",
+                                                        justifyContent:
+                                                            "space-between",
+                                                        gap:
+                                                            "12px",
+                                                        marginBottom:
+                                                            "7px",
+                                                    }}
+                                                >
+                                                    <small>
+                                                        Progress
+                                                    </small>
+
+                                                    <strong>
+                                                        {
+                                                            percentage
+                                                        }
+                                                        %
+                                                    </strong>
+                                                </div>
+
+                                                <div
+                                                    className="th-progress-track"
+                                                    role="progressbar"
+                                                    aria-valuemin={
+                                                        0
+                                                    }
+                                                    aria-valuemax={
+                                                        100
+                                                    }
+                                                    aria-valuenow={
+                                                        percentage
+                                                    }
+                                                    aria-label={`${course.title} progress`}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            width: `${percentage}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    display:
+                                                        "flex",
+                                                    justifyContent:
+                                                        "space-between",
+                                                    gap:
+                                                        "12px",
+                                                    alignItems:
+                                                        "center",
+                                                    marginTop:
+                                                        "16px",
+                                                }}
+                                            >
+                                                <small>
+                                                    {
+                                                        progress
+                                                            ?.progress
+                                                            .lessons_completed
+                                                    }
+                                                    /
+                                                    {
+                                                        progress
+                                                            ?.progress
+                                                            .lessons_total
+                                                    }{" "}
+                                                    lessons
+                                                </small>
+
+                                                <Link
+                                                    to={`/courses/${course.slug}`}
+                                                    className="text-link"
+                                                >
+                                                    {progress
+                                                        ?.course_completed
+                                                        ? "Review course →"
+                                                        : "Continue →"}
+                                                </Link>
+                                            </div>
+                                        </article>
+                                    );
+                                },
+                            )}
+                        </div>
+                    )}
+
+                    {enrolledSnapshots.length >
+                        0 && (
+                        <div
+                            style={{
+                                marginTop:
+                                    "20px",
+                            }}
+                        >
+                            <span className="eyebrow">
+                                OVERALL PROGRESS
+                            </span>
+
+                            <p
+                                className="muted-text"
+                                style={{
+                                    marginTop:
+                                        "8px",
+                                }}
+                            >
+                                Your average completion
+                                across enrolled courses
+                                is{" "}
+                                <strong>
+                                    {
+                                        averageCompletion
+                                    }
+                                    %
+                                </strong>
+                                .
+                            </p>
                         </div>
                     )}
                 </div>
@@ -216,30 +533,34 @@ export default function DashboardPage() {
                     {notificationsQuery.isSuccess &&
                         notificationsQuery.data.results
                             .slice(0, 4)
-                            .map((notification) => (
-                                <div
-                                    key={
-                                        notification.id
-                                    }
-                                    className={
-                                        notification.is_read
-                                            ? "mini-notification"
-                                            : "mini-notification unread"
-                                    }
-                                >
-                                    <strong>
-                                        {
-                                            notification.title
+                            .map(
+                                (
+                                    notification,
+                                ) => (
+                                    <div
+                                        key={
+                                            notification.id
                                         }
-                                    </strong>
+                                        className={
+                                            notification.is_read
+                                                ? "mini-notification"
+                                                : "mini-notification unread"
+                                        }
+                                    >
+                                        <strong>
+                                            {
+                                                notification.title
+                                            }
+                                        </strong>
 
-                                    <p>
-                                        {
-                                            notification.message
-                                        }
-                                    </p>
-                                </div>
-                            ))}
+                                        <p>
+                                            {
+                                                notification.message
+                                            }
+                                        </p>
+                                    </div>
+                                ),
+                            )}
                 </aside>
             </section>
 
@@ -254,10 +575,10 @@ export default function DashboardPage() {
                     </h2>
 
                     <p>
-                        Every future feature will
-                        connect back to practical
-                        skills and measurable
-                        outcomes.
+                        Every learning activity now
+                        contributes to measurable
+                        progress, assessments, and
+                        credentials.
                     </p>
                 </div>
 

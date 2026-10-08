@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Link, Navigate } from "react-router";
+import {
+    useMemo,
+    useState,
+} from "react";
+import {
+    Link,
+    Navigate,
+} from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSubmissions } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -12,12 +18,32 @@ type Filter =
     | "correction"
     | "error";
 
-const filters: Array<{ value: Filter; label: string }> = [
-    { value: "all", label: "All" },
-    { value: "pending", label: "Pending" },
-    { value: "graded", label: "Graded" },
-    { value: "correction", label: "Needs correction" },
-    { value: "error", label: "Execution errors" },
+const EMPTY_SUBMISSIONS: Submission[] = [];
+
+const filters: Array<{
+    value: Filter;
+    label: string;
+}> = [
+    {
+        value: "all",
+        label: "All",
+    },
+    {
+        value: "pending",
+        label: "Pending",
+    },
+    {
+        value: "graded",
+        label: "Graded",
+    },
+    {
+        value: "correction",
+        label: "Needs correction",
+    },
+    {
+        value: "error",
+        label: "Execution errors",
+    },
 ];
 
 function isInstructor(
@@ -31,16 +57,26 @@ function isInstructor(
     );
 }
 
-function getStatus(submission: Submission) {
-    if (submission.status === "correction") {
+function getStatus(
+    submission: Submission,
+) {
+    if (
+        submission.status ===
+        "correction"
+    ) {
         return "Needs correction";
     }
 
-    if (submission.status === "error") {
+    if (
+        submission.status ===
+        "error"
+    ) {
         return "Execution error";
     }
 
-    if (submission.score !== null) {
+    if (
+        submission.score !== null
+    ) {
         return "Graded";
     }
 
@@ -57,27 +93,48 @@ function matchesFilter(
 
     if (filter === "pending") {
         return (
-            submission.status === "submitted" &&
+            submission.status ===
+                "submitted" &&
             submission.score === null
         );
     }
 
-    return submission.status === filter;
+    if (filter === "graded") {
+        return (
+            submission.status !==
+                "correction" &&
+            submission.status !==
+                "error" &&
+            submission.score !== null
+        );
+    }
+
+    return (
+        submission.status ===
+        filter
+    );
 }
 
-function formatDate(value: string) {
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(new Date(value));
+function formatDate(
+    value: string,
+) {
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            dateStyle: "medium",
+            timeStyle: "short",
+        },
+    ).format(
+        new Date(value),
+    );
 }
 
 export default function InstructorAssessmentPage() {
-    const { auth } = useAuth();
-    const token = auth?.token ?? "";
+    const { auth } =
+        useAuth();
 
-    const [filter, setFilter] =
-        useState<Filter>("pending");
+    const token =
+        auth?.token ?? "";
 
     const instructor =
         isInstructor(
@@ -85,46 +142,237 @@ export default function InstructorAssessmentPage() {
             auth?.user.is_staff,
         );
 
-    const submissionsQuery = useQuery({
-        queryKey: [
-            "instructor-assessment-submissions",
-            token,
-        ],
-        queryFn: () => getSubmissions(token),
-        enabled: Boolean(token) && instructor,
-    });
+    const [
+        filter,
+        setFilter,
+    ] = useState<Filter>(
+        "pending",
+    );
+
+    const [
+        search,
+        setSearch,
+    ] = useState("");
+
+    const [
+        courseFilter,
+        setCourseFilter,
+    ] = useState("all");
+
+    const [
+        studentFilter,
+        setStudentFilter,
+    ] = useState("all");
+
+    const submissionsQuery =
+        useQuery({
+            queryKey: [
+                "instructor-assessment-submissions",
+                token,
+            ],
+            queryFn: () =>
+                getSubmissions(
+                    token,
+                ),
+            enabled:
+                Boolean(token) &&
+                instructor,
+        });
 
     const submissions =
-        submissionsQuery.data?.results ?? [];
+        submissionsQuery.data
+            ?.results ?? EMPTY_SUBMISSIONS;
+
+    const courseOptions =
+        useMemo(
+            () =>
+                Array.from(
+                    new Set(
+                        submissions.map(
+                            (
+                                submission,
+                            ) =>
+                                submission
+                                    .course
+                                    .title,
+                        ),
+                    ),
+                ).sort(),
+            [submissions],
+        );
+
+    const studentOptions =
+        useMemo(
+            () =>
+                Array.from(
+                    new Set(
+                        submissions.map(
+                            (
+                                submission,
+                            ) =>
+                                submission
+                                    .student
+                                    .username,
+                        ),
+                    ),
+                ).sort(),
+            [submissions],
+        );
 
     const stats = {
-        all: submissions.length,
-        pending: submissions.filter(
-            (submission) =>
-                submission.status === "submitted" &&
-                submission.score === null,
-        ).length,
-        graded: submissions.filter(
-            (submission) =>
-                submission.status !== "correction" &&
-                submission.score !== null,
-        ).length,
-        correction: submissions.filter(
-            (submission) =>
-                submission.status === "correction",
-        ).length,
-        error: submissions.filter(
-            (submission) =>
-                submission.status === "error",
-        ).length,
+        all:
+            submissions.length,
+
+        pending:
+            submissions.filter(
+                (
+                    submission,
+                ) =>
+                    submission.status ===
+                        "submitted" &&
+                    submission.score ===
+                        null,
+            ).length,
+
+        graded:
+            submissions.filter(
+                (
+                    submission,
+                ) =>
+                    submission.status !==
+                        "correction" &&
+                    submission.status !==
+                        "error" &&
+                    submission.score !==
+                        null,
+            ).length,
+
+        correction:
+            submissions.filter(
+                (
+                    submission,
+                ) =>
+                    submission.status ===
+                    "correction",
+            ).length,
+
+        error:
+            submissions.filter(
+                (
+                    submission,
+                ) =>
+                    submission.status ===
+                    "error",
+            ).length,
     };
+
     const visibleSubmissions =
-        submissions.filter((submission) =>
-            matchesFilter(
-                submission,
-                filter,
-            ),
+        useMemo(() => {
+            const normalizedSearch =
+                search
+                    .trim()
+                    .toLowerCase();
+
+            return submissions
+                .filter(
+                    (
+                        submission,
+                    ) =>
+                        matchesFilter(
+                            submission,
+                            filter,
+                        ),
+                )
+                .filter(
+                    (
+                        submission,
+                    ) =>
+                        courseFilter ===
+                            "all" ||
+                        submission.course
+                            .title ===
+                            courseFilter,
+                )
+                .filter(
+                    (
+                        submission,
+                    ) =>
+                        studentFilter ===
+                            "all" ||
+                        submission.student
+                            .username ===
+                            studentFilter,
+                )
+                .filter(
+                    (
+                        submission,
+                    ) => {
+                        if (
+                            !normalizedSearch
+                        ) {
+                            return true;
+                        }
+
+                        return [
+                            submission
+                                .activity
+                                .title,
+                            submission
+                                .activity
+                                .activity_type,
+                            submission
+                                .student
+                                .username,
+                            submission
+                                .course
+                                .title,
+                        ].some(
+                            (
+                                value,
+                            ) =>
+                                value
+                                    .toLowerCase()
+                                    .includes(
+                                        normalizedSearch,
+                                    ),
+                        );
+                    },
+                )
+                .sort(
+                    (
+                        first,
+                        second,
+                    ) =>
+                        new Date(
+                            second.submitted_at,
+                        ).getTime() -
+                        new Date(
+                            first.submitted_at,
+                        ).getTime(),
+                );
+        }, [
+            submissions,
+            filter,
+            search,
+            courseFilter,
+            studentFilter,
+        ]);
+
+    function resetFilters() {
+        setFilter(
+            "pending",
         );
+
+        setSearch("");
+
+        setCourseFilter(
+            "all",
+        );
+
+        setStudentFilter(
+            "all",
+        );
+    }
 
     if (!instructor) {
         return (
@@ -150,10 +398,11 @@ export default function InstructorAssessmentPage() {
                     </h1>
 
                     <p>
-                        Review submitted work, assign
-                        grades, provide feedback, and
-                        return practical assessment
-                        results to learners.
+                        Review submitted work,
+                        assign grades, provide
+                        feedback, and return
+                        practical assessment results
+                        to learners.
                     </p>
                 </div>
 
@@ -161,56 +410,75 @@ export default function InstructorAssessmentPage() {
                     to="/assessments"
                     className="text-link"
                 >
-                    Student assessment center ?
+                    Student assessment center →
                 </Link>
             </section>
 
             <section className="dashboard-stats">
                 <article>
-                    <span>All submissions</span>
+                    <span>
+                        All submissions
+                    </span>
+
                     <strong>
                         {submissionsQuery.isPending
-                            ? "�"
+                            ? "—"
                             : stats.all}
                     </strong>
+
                     <small>
-                        student assessment records
+                        student assessment
+                        records
                     </small>
                 </article>
 
                 <article>
-                    <span>Pending review</span>
+                    <span>
+                        Pending review
+                    </span>
+
                     <strong>
                         {submissionsQuery.isPending
-                            ? "�"
+                            ? "—"
                             : stats.pending}
                     </strong>
+
                     <small>
-                        submissions requiring action
+                        submissions requiring
+                        action
                     </small>
                 </article>
 
                 <article>
-                    <span>Graded</span>
+                    <span>
+                        Graded
+                    </span>
+
                     <strong>
                         {submissionsQuery.isPending
-                            ? "�"
+                            ? "—"
                             : stats.graded}
                     </strong>
+
                     <small>
                         completed assessments
                     </small>
                 </article>
 
                 <article>
-                    <span>Needs correction</span>
+                    <span>
+                        Needs correction
+                    </span>
+
                     <strong>
                         {submissionsQuery.isPending
-                            ? "�"
+                            ? "—"
                             : stats.correction}
                     </strong>
+
                     <small>
-                        learners requiring another pass
+                        learners requiring
+                        another pass
                     </small>
                 </article>
             </section>
@@ -226,67 +494,227 @@ export default function InstructorAssessmentPage() {
                             Student submissions
                         </h2>
                     </div>
+
+                    <span className="muted-text">
+                        Showing{" "}
+                        {
+                            visibleSubmissions.length
+                        }{" "}
+                        of{" "}
+                        {submissions.length}
+                    </span>
                 </div>
 
                 <div className="assessment-options">
-                    {filters.map((item) => (
-                        <button
-                            key={item.value}
-                            type="button"
-                            className={
-                                filter === item.value
-                                    ? "primary-button"
-                                    : "secondary-button"
+                    {filters.map(
+                        (item) => (
+                            <button
+                                key={
+                                    item.value
+                                }
+                                type="button"
+                                className={
+                                    filter ===
+                                    item.value
+                                        ? "primary-button"
+                                        : "secondary-button"
+                                }
+                                onClick={() =>
+                                    setFilter(
+                                        item.value,
+                                    )
+                                }
+                            >
+                                {
+                                    item.label
+                                }{" "}
+                                ·{" "}
+                                {
+                                    stats[
+                                        item.value
+                                    ]
+                                }
+                            </button>
+                        ),
+                    )}
+                </div>
+
+                <div className="assessment-options">
+                    <label>
+                        <span>
+                            Search
+                        </span>
+
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(
+                                event,
+                            ) =>
+                                setSearch(
+                                    event.target
+                                        .value,
+                                )
                             }
-                            onClick={() =>
-                                setFilter(item.value)
+                            placeholder="Student, course, activity..."
+                        />
+                    </label>
+
+                    <label>
+                        <span>
+                            Course
+                        </span>
+
+                        <select
+                            value={
+                                courseFilter
+                            }
+                            onChange={(
+                                event,
+                            ) =>
+                                setCourseFilter(
+                                    event.target
+                                        .value,
+                                )
                             }
                         >
-                            {item.label}
-                            {" � "}
-                            {stats[item.value]}
-                        </button>
-                    ))}
+                            <option value="all">
+                                All courses
+                            </option>
+
+                            {courseOptions.map(
+                                (
+                                    course,
+                                ) => (
+                                    <option
+                                        key={
+                                            course
+                                        }
+                                        value={
+                                            course
+                                        }
+                                    >
+                                        {
+                                            course
+                                        }
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>
+                            Student
+                        </span>
+
+                        <select
+                            value={
+                                studentFilter
+                            }
+                            onChange={(
+                                event,
+                            ) =>
+                                setStudentFilter(
+                                    event.target
+                                        .value,
+                                )
+                            }
+                        >
+                            <option value="all">
+                                All students
+                            </option>
+
+                            {studentOptions.map(
+                                (
+                                    student,
+                                ) => (
+                                    <option
+                                        key={
+                                            student
+                                        }
+                                        value={
+                                            student
+                                        }
+                                    >
+                                        {
+                                            student
+                                        }
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                    </label>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={
+                            resetFilters
+                        }
+                    >
+                        Reset filters
+                    </button>
                 </div>
 
                 {submissionsQuery.isPending && (
                     <div className="status-card">
-                        Loading the review queue...
+                        Loading the review
+                        queue...
                     </div>
                 )}
 
                 {submissionsQuery.isError && (
                     <div className="status-card error">
-                        Unable to load student submissions.
+                        Unable to load student
+                        submissions.
                         <br />
-                        {submissionsQuery.error instanceof Error
+                        {submissionsQuery.error instanceof
+                        Error
                             ? submissionsQuery.error.message
                             : "Please try again."}
                     </div>
                 )}
 
                 {submissionsQuery.isSuccess &&
-                    visibleSubmissions.length === 0 && (
+                    visibleSubmissions.length ===
+                        0 && (
                         <div className="status-card">
                             <strong>
-                                No submissions in this view.
+                                No submissions in
+                                this view.
                             </strong>
 
                             <p>
                                 There are no student
-                                submissions matching the
-                                selected filter.
+                                submissions matching
+                                the selected filters.
                             </p>
+
+                            <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={
+                                    resetFilters
+                                }
+                            >
+                                Clear filters
+                            </button>
                         </div>
                     )}
 
                 {submissionsQuery.isSuccess &&
-                    visibleSubmissions.length > 0 && (
+                    visibleSubmissions.length >
+                        0 && (
                         <div className="assessment-list">
                             {visibleSubmissions.map(
-                                (submission) => (
+                                (
+                                    submission,
+                                ) => (
                                     <article
-                                        key={submission.id}
+                                        key={
+                                            submission.id
+                                        }
                                         className="assessment-card"
                                     >
                                         <div>
@@ -336,7 +764,8 @@ export default function InstructorAssessmentPage() {
                                             </span>
 
                                             <strong>
-                                                {submission.score === null
+                                                {submission.score ===
+                                                null
                                                     ? "Not graded"
                                                     : `${submission.score}/${submission.activity.max_score}`}
                                             </strong>
@@ -354,7 +783,7 @@ export default function InstructorAssessmentPage() {
                                                 to={`/instructor/assessments/submissions/${submission.id}`}
                                                 className="text-link"
                                             >
-                                                Review submission ?
+                                                Review submission →
                                             </Link>
                                         </div>
                                     </article>
