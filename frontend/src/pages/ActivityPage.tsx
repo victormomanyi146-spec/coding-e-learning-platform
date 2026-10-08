@@ -279,6 +279,17 @@ export default function ActivityPage() {
     const currentActivity =
         activity.activity;
 
+    const latestSubmissionStatus =
+        latestSubmission?.status?.toLowerCase() ?? "";
+
+    const isCorrection =
+        latestSubmissionStatus.includes(
+            "correction",
+        );
+
+    const isGraded =
+        latestSubmissionStatus === "graded";
+
     const isReading =
         currentActivity.activity_type ===
         "reading";
@@ -522,9 +533,11 @@ export default function ActivityPage() {
                             </span>
 
                             <strong>
-                                {
-                                    latestSubmission.status
-                                }
+                                {isCorrection
+                                    ? "Needs correction"
+                                    : isGraded
+                                        ? "Graded"
+                                        : latestSubmission.status}
                             </strong>
                         </div>
 
@@ -544,6 +557,14 @@ export default function ActivityPage() {
                                 {
                                     latestSubmission.feedback
                                 }
+                            </p>
+                        )}
+
+                        {isCorrection && (
+                            <p>
+                                Your instructor requested changes.
+                                Update your solution, then submit the
+                                corrected work for another assessment.
                             </p>
                         )}
                     </section>
@@ -647,7 +668,9 @@ export default function ActivityPage() {
                         >
                             {submitMutation.isPending
                                 ? "Submitting..."
-                                : "Submit for assessment"}
+                                : isCorrection
+                                    ? "Correct & Resubmit"
+                                    : "Submit for assessment"}
                         </button>
                     </div>
 
@@ -661,9 +684,9 @@ export default function ActivityPage() {
 
                     {submitMutation.isSuccess && (
                         <div className="th-form-success">
-                            Submission sent successfully.
-                            Your instructor can now review
-                            your work.
+                            {isCorrection
+                                ? "Corrected submission sent successfully. Your instructor can now review the updated work."
+                                : "Submission sent successfully. Your instructor can now review your work."}
                         </div>
                     )}
                 </form>
