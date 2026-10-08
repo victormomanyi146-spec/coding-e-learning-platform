@@ -9,6 +9,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
 
+
+cors_origins_env = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "",
+)
+
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in cors_origins_env.split(",")
+    if origin.strip()
+]
+
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5176",
+        "http://localhost:5176",
+    ]
+
+CORS_URLS_REGEX = r"^/api/.*$"
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 if not SECRET_KEY:
@@ -38,6 +60,7 @@ if DEBUG:
 
 INSTALLED_APPS = [
     "accounts",
+    "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
     "django.contrib.admin",
@@ -50,6 +73,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
