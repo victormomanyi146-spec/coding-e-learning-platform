@@ -22,6 +22,42 @@ function formatDate(value: string) {
     }).format(new Date(value));
 }
 
+function submissionStatusLabel(
+    submission: Submission,
+) {
+    if (submission.status === "correction") {
+        return "Needs correction";
+    }
+
+    if (submission.status === "error") {
+        return "Execution error";
+    }
+
+    if (submission.score !== null) {
+        return "Graded";
+    }
+
+    return "Awaiting review";
+}
+
+function submissionStatusDescription(
+    submission: Submission,
+) {
+    if (submission.status === "correction") {
+        return "Learner must revise and resubmit this work.";
+    }
+
+    if (submission.status === "error") {
+        return "The submitted code encountered an execution error.";
+    }
+
+    if (submission.score !== null) {
+        return "Instructor assessment is complete.";
+    }
+
+    return "This submission is waiting for instructor review.";
+}
+
 function SubmissionDetail({
     submission,
     isInstructor,
@@ -51,23 +87,50 @@ function SubmissionDetail({
 
     const reviewMutation = useMutation({
         mutationFn: async () => {
-            const numericScore = Number(score);
+            const rawScore = score.trim();
 
             if (
-                !Number.isInteger(numericScore) ||
-                numericScore < 0 ||
-                numericScore >
-                    submission.activity.max_score
+                reviewStatus === "graded" &&
+                !rawScore
             ) {
                 throw new Error(
-                    `Score must be between 0 and ${submission.activity.max_score}.`,
+                    "Enter a score before marking this submission as graded.",
+                );
+            }
+
+            const numericScore = rawScore
+                ? Number(rawScore)
+                : null;
+
+            if (
+                numericScore !== null &&
+                (
+                    !Number.isInteger(numericScore) ||
+                    numericScore < 0 ||
+                    numericScore >
+                        submission.activity.max_score
+                )
+            ) {
+                throw new Error(
+                    `Score must be a whole number between 0 and ${submission.activity.max_score}.`,
+                );
+            }
+
+            if (
+                reviewStatus === "correction" &&
+                !feedback.trim()
+            ) {
+                throw new Error(
+                    "Add actionable feedback before requesting a correction.",
                 );
             }
 
             return reviewSubmission(
                 submission.id,
                 {
-                    score: numericScore,
+                    ...(numericScore !== null
+                        ? { score: numericScore }
+                        : {}),
                     feedback: feedback.trim(),
                     status: reviewStatus,
                 },
@@ -157,15 +220,15 @@ function SubmissionDetail({
                     <span>Status</span>
 
                     <strong>
-                        {submission.status === "correction"
-                            ? "Needs correction"
-                            : submission.score === null
-                              ? "Pending"
-                              : "Graded"}
+                        {submissionStatusLabel(
+                            submission,
+                        )}
                     </strong>
 
                     <small>
-                        {submission.status}
+                        {submissionStatusDescription(
+                            submission,
+                        )}
                     </small>
                 </article>
 
@@ -290,107 +353,139 @@ function SubmissionDetail({
                     </div>
 
                     <form
-                        className="assessment-options"
+                        className="review-form"
                         onSubmit={(event) => {
                             event.preventDefault();
                             reviewMutation.mutate();
                         }}
                     >
-                        <article>
-                            <span className="feature-number">
-                                SCORE
-                            </span>
+                        <div className="review-form-grid">
+                            <article>
+                                <span className="feature-number">
+                                    SCORE
+                                </span>
 
-                            <label htmlFor="review-score">
-                                Score
-                            </label>
+                                <label htmlFor="review-score">
+                                    Score
+                                </label>
 
-                            <input
-                                id="review-score"
-                                type="number"
-                                min="0"
-                                max={
-                                    submission.activity
-                                        .max_score
-                                }
-                                step="1"
-                                value={score}
-                                onChange={(event) => {
-                                    setScore(
-                                        event.target.value,
-                                    );
-                                }}
-                                required
-                            />
+                                <input
+                                    id="review-score"
+                                    type="number"
+                                    min="0"
+                                    max={
+                                        submission.activity
+                                            .max_score
+                                    }
+                                    step="1"
+                                    value={score}
+                                    onChange={(event) => {
+                                        setScore(
+                                            event.target.value,
+                                        );
+                                    }}
+                                    required={
+                                        reviewStatus ===
+                                        "graded"
+                                    }
+                                />
 
-                            <p>
-                                Maximum score:{" "}
-                                {
-                                    submission.activity
-                                        .max_score
-                                }
-                            </p>
-                        </article>
+                                <p>
+                                    {reviewStatus ===
+                                    "graded"
+                                        ? `Required. Use a whole number from 0 to ${submission.activity.max_score}.`
+                                        : "Optional when requesting a correction."}
+                                </p>
+                            </article>
 
-                        <article>
-                            <span className="feature-number">
-                                STATUS
-                            </span>
+                            <article>
+                                <span className="feature-number">
+                                    DECISION
+                                </span>
 
-                            <label htmlFor="review-status">
-                                Review decision
-                            </label>
+                                <label htmlFor="review-status">
+                                    Review decision
+                                </label>
 
-                            <select
-                                id="review-status"
-                                value={reviewStatus}
-                                onChange={(event) => {
-                                    setReviewStatus(
-                                        event.target.value as
-                                            | "graded"
-                                            | "correction",
-                                    );
-                                }}
-                            >
-                                <option value="graded">
-                                    Graded
-                                </option>
+                                <select
+                                    id="review-status"
+                                    value={reviewStatus}
+                                    onChange={(event) => {
+                                        const nextStatus =
+                                            event.target
+                                                .value as
+                                                | "graded"
+                                                | "correction";
 
-                                <option value="correction">
-                                    Needs correction
-                                </option>
-                            </select>
+                                        setReviewStatus(
+                                            nextStatus,
+                                        );
 
-                            <p>
-                                Mark the submission as
-                                complete or send it back
-                                for another attempt.
-                            </p>
-                        </article>
+                                        if (
+                                            nextStatus ===
+                                            "correction"
+                                        ) {
+                                            setScore("");
+                                        }
+                                    }}
+                                >
+                                    <option value="graded">
+                                        Graded
+                                    </option>
 
-                        <article>
-                            <span className="feature-number">
-                                FEEDBACK
-                            </span>
+                                    <option value="correction">
+                                        Needs correction
+                                    </option>
+                                </select>
 
-                            <label htmlFor="review-feedback">
-                                Instructor feedback
-                            </label>
+                                <p>
+                                    {reviewStatus ===
+                                    "correction"
+                                        ? "Send the work back for revision."
+                                        : "Complete the assessment and record the final result."}
+                                </p>
+                            </article>
 
-                            <textarea
-                                id="review-feedback"
-                                rows={6}
-                                value={feedback}
-                                onChange={(event) => {
-                                    setFeedback(
-                                        event.target.value,
-                                    );
-                                }}
-                                placeholder="Add clear, actionable feedback for the learner."
-                            />
-                        </article>
+                            <article className="review-field-wide">
+                                <span className="feature-number">
+                                    FEEDBACK
+                                </span>
 
-                        <div>
+                                <label htmlFor="review-feedback">
+                                    Instructor feedback
+                                </label>
+
+                                <textarea
+                                    id="review-feedback"
+                                    rows={7}
+                                    value={feedback}
+                                    onChange={(event) => {
+                                        setFeedback(
+                                            event.target.value,
+                                        );
+                                    }}
+                                    placeholder={
+                                        reviewStatus ===
+                                        "correction"
+                                            ? "Explain what must be corrected and what the learner should improve."
+                                            : "Add clear, actionable feedback for the learner."
+                                    }
+                                    required={
+                                        reviewStatus ===
+                                        "correction"
+                                    }
+                                />
+
+                                <p>
+                                    {reviewStatus ===
+                                    "correction"
+                                        ? "Required for correction requests."
+                                        : "Recommended so the learner understands the result."}
+                                </p>
+                            </article>
+                        </div>
+
+                        <div className="review-actions">
                             {reviewMutation.isError && (
                                 <div className="status-card error">
                                     {reviewMutation.error
@@ -402,7 +497,11 @@ function SubmissionDetail({
 
                             {reviewMutation.isSuccess && (
                                 <div className="status-card">
-                                    Review saved successfully.
+                                    Review saved. The submission is now{" "}
+                                    {reviewStatus ===
+                                    "correction"
+                                        ? "marked for correction."
+                                        : "graded."}
                                 </div>
                             )}
 
@@ -415,7 +514,10 @@ function SubmissionDetail({
                             >
                                 {reviewMutation.isPending
                                     ? "Saving review..."
-                                    : "Save review"}
+                                    : reviewStatus ===
+                                        "correction"
+                                      ? "Request correction"
+                                      : "Save grade"}
                             </button>
                         </div>
                     </form>

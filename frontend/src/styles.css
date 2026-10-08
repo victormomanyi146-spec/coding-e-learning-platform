@@ -920,6 +920,97 @@ a {
     color: #64748b;
 }
 
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.review-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.review-form-grid article {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.review-field-wide {
+    grid-column: 1 / -1;
+}
+
+.review-form input,
+.review-form select,
+.review-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 13px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 10px;
+    background: rgba(2, 8, 23, 0.45);
+    color: #e2e8f0;
+}
+
+.review-form input,
+.review-form select {
+    min-height: 46px;
+}
+
+.review-form textarea {
+    min-height: 150px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.review-form input:focus,
+.review-form select:focus,
+.review-form textarea:focus {
+    outline: 2px solid rgba(56, 189, 248, 0.3);
+    outline-offset: 1px;
+}
+
+.review-form p {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.review-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.review-actions .status-card {
+    flex: 1 1 320px;
+    margin: 0;
+}
+
+@media (max-width: 720px) {
+    .review-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .review-field-wide {
+        grid-column: auto;
+    }
+
+    .review-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .review-actions .primary-button {
+        width: 100%;
+    }
+}
+
 @media (max-width: 900px) {
     .assessment-options {
         grid-template-columns: repeat(2, minmax(0, 1fr));
