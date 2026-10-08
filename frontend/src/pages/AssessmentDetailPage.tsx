@@ -54,7 +54,7 @@ function SubmissionDetail({
             const numericScore = Number(score);
 
             if (
-                !Number.isFinite(numericScore) ||
+                !Number.isInteger(numericScore) ||
                 numericScore < 0 ||
                 numericScore >
                     submission.activity.max_score
@@ -313,7 +313,7 @@ function SubmissionDetail({
                                     submission.activity
                                         .max_score
                                 }
-                                step="0.01"
+                                step="1"
                                 value={score}
                                 onChange={(event) => {
                                     setScore(
