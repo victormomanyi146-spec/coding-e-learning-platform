@@ -7,6 +7,7 @@ import {
 } from "react";
 import {
     loginRequest,
+    registerRequest,
     type LoginMode,
 } from "../api/auth";
 import type { AuthUser } from "../types/api";
@@ -24,7 +25,12 @@ interface AuthContextValue {
         password: string,
         mode?: LoginMode,
     ) => Promise<void>;
-    logout: () => void;
+    register: (
+        username: string,
+        email: string,
+        password: string,
+        passwordConfirm: string,
+    ) => Promise<void>;    logout: () => void;
 }
 
 const STORAGE_KEY = "tech_haven_auth";
@@ -86,6 +92,31 @@ export function AuthProvider({
         setAuth(nextAuth);
     }
 
+    async function register(
+        username: string,
+        email: string,
+        password: string,
+        passwordConfirm: string,
+    ) {
+        const response = await registerRequest(
+            username,
+            email,
+            password,
+            passwordConfirm,
+        );
+
+        const nextAuth: AuthState = {
+            token: response.token,
+            user: response.user,
+        };
+
+        sessionStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(nextAuth),
+        );
+
+        setAuth(nextAuth);
+    }
     function logout() {
         sessionStorage.removeItem(
             STORAGE_KEY,
@@ -99,6 +130,7 @@ export function AuthProvider({
             auth,
             isAuthenticated: Boolean(auth),
             login,
+            register,
             logout,
         }),
         [auth],

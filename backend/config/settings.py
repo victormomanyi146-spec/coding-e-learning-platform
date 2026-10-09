@@ -1,4 +1,4 @@
-﻿from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 import os
 from pathlib import Path
 
@@ -43,6 +43,8 @@ if not SECRET_KEY:
         )
 
 allowed_hosts_env = os.environ.get("DJANGO_ALLOWED_HOSTS", "")
+UNIFIED_REACT_FRONTEND = os.getenv("UNIFIED_REACT_FRONTEND", "false").lower() in {"1", "true", "yes", "on"}
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in allowed_hosts_env.split(",")
@@ -80,6 +82,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.BlockInstructorFromDjangoAdminMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

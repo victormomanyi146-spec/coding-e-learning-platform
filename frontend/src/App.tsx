@@ -9,6 +9,7 @@ import {
 import { useAuth } from "./context/AuthContext";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import { useQuery } from "@tanstack/react-query";
 import {
     getCourses,
@@ -221,6 +222,11 @@ function AppShell() {
                                 <LoginPage />
                             }
                         />
+
+                <Route
+                    path="/register"
+                    element={<RegisterPage />}
+                />
 
                         <Route element={<ProtectedRoute />}>
                             <Route

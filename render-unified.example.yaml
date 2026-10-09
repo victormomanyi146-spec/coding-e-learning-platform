@@ -1,0 +1,23 @@
+# Reference only: create a separate staging web service with this configuration first.
+# Set DATABASE_URL to a dedicated staging PostgreSQL database, not production.
+# never commit the URL or paste it into chat.
+services:
+  - type: web
+    name: coding-e-learning-unified
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_TIME_ZONE
+        value: "Africa/Nairobi"
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false

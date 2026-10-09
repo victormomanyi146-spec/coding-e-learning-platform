@@ -9,6 +9,7 @@ from .forms import StudentRegistrationForm
 from .serializers import (
     InstructorLoginSerializer,
     StudentLoginSerializer,
+    StudentRegistrationSerializer,
 )
 
 
@@ -32,6 +33,32 @@ def register(request):
         {"form": form},
     )
 
+
+class StudentRegistrationAPIView(APIView):
+    """Create a student account and issue its authentication token."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        serializer = StudentRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "token": token.key,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "role": user.role,
+                },
+            },
+            status=201,
+        )
 
 class StudentLoginAPIView(APIView):
     """Issue a DRF token for valid student credentials."""
