@@ -26,3 +26,24 @@ export function loginRequest(
         },
     );
 }
+
+
+export function registerRequest(
+    username: string,
+    email: string,
+    password: string,
+    passwordConfirm: string,
+) {
+    return apiRequest<LoginResponse>(
+        "/api/accounts/register/",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                username,
+                email,
+                password,
+                password_confirm: passwordConfirm,
+            }),
+        },
+    );
+}
