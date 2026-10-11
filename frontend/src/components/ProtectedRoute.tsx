@@ -1,28 +1,33 @@
-﻿import {
+import {
     Navigate,
     Outlet,
     useLocation,
 } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import type { AuthUser } from "../types/api";
 
-export default function ProtectedRoute() {
-    const {
-        isAuthenticated,
-    } = useAuth();
+type AppRole = AuthUser["role"];
 
-    const location =
-        useLocation();
+export default function ProtectedRoute({
+    requiredRoles,
+}: {
+    requiredRoles?: AppRole[];
+}) {
+    const { auth, isAuthenticated } = useAuth();
+    const location = useLocation();
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !auth) {
         return (
             <Navigate
                 to="/login"
                 replace
-                state={{
-                    from: location.pathname,
-                }}
+                state={{ from: location.pathname }}
             />
         );
+    }
+
+    if (requiredRoles && !requiredRoles.includes(auth.user.role)) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return <Outlet />;

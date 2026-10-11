@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from .forms import StudentRegistrationForm
 from .serializers import (
+    AdminLoginSerializer,
     InstructorLoginSerializer,
     StudentLoginSerializer,
     StudentRegistrationSerializer,
@@ -108,6 +109,34 @@ class InstructorLoginAPIView(APIView):
                     "username": user.username,
                     "email": user.email,
                     "role": user.role,
+                    "is_staff": user.is_staff,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminLoginAPIView(APIView):
+    """Issue a token only to an active Django superuser."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        serializer = AdminLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "token": token.key,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "role": "ADMIN",
                     "is_staff": user.is_staff,
                 },
             },

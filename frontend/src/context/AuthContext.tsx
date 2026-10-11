@@ -30,7 +30,8 @@ interface AuthContextValue {
         email: string,
         password: string,
         passwordConfirm: string,
-    ) => Promise<void>;    logout: () => void;
+    ) => Promise<void>;
+    logout: () => void;
 }
 
 const STORAGE_KEY = "tech_haven_auth";

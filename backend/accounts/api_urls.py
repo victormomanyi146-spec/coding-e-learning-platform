@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AdminLoginAPIView,
     InstructorLoginAPIView,
     StudentRegistrationAPIView,
     StudentLoginAPIView,
@@ -18,5 +19,10 @@ urlpatterns = [
         "instructor-login/",
         InstructorLoginAPIView.as_view(),
         name="instructor-login",
+    ),
+    path(
+        "admin-login/",
+        AdminLoginAPIView.as_view(),
+        name="admin-login",
     ),
 ]

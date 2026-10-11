@@ -24,7 +24,7 @@ class StudentLoginSerializer(serializers.Serializer):
                 "Invalid username or password."
             )
 
-        if user.role != User.Roles.STUDENT:
+        if user.role != User.Roles.STUDENT or user.is_staff or user.is_superuser:
             raise serializers.ValidationError(
                 "This login is for students only."
             )
@@ -50,7 +50,7 @@ class InstructorLoginSerializer(serializers.Serializer):
                 "Invalid username or password."
             )
 
-        if user.role != User.Roles.INSTRUCTOR:
+        if user.role != User.Roles.INSTRUCTOR or user.is_superuser:
             raise serializers.ValidationError(
                 "This login is for instructors only."
             )
@@ -112,3 +112,24 @@ class StudentRegistrationSerializer(serializers.Serializer):
             password=password,
             role=User.Roles.STUDENT,
         )
+
+
+class AdminLoginSerializer(serializers.Serializer):
+    """Authenticate only active Django superusers as platform administrators."""
+
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        user = authenticate(
+            username=data.get("username"),
+            password=data.get("password"),
+        )
+
+        if user is None or not user.is_active or not user.is_superuser:
+            raise serializers.ValidationError(
+                "Invalid administrator credentials."
+            )
+
+        data["user"] = user
+        return data
