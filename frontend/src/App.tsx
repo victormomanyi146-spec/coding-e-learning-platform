@@ -48,7 +48,6 @@ function AppShell() {
 
 
     const isInstructor =
-        Boolean(auth?.user.is_staff) ||
         auth?.user.role === "INSTRUCTOR" ||
         auth?.user.role === "ADMIN";
 
@@ -179,10 +178,11 @@ function AppShell() {
                                             .toUpperCase()}
                                     </span>
 
-                                    <span>
-                                        {
-                                            auth.user.username
-                                        }
+                                    <span className="profile-identity">
+                                        <span>{auth.user.username}</span>
+                                        <small className={`role-badge role-${auth.user.role.toLowerCase()}`}>
+                                            {auth.user.role === "ADMIN" ? "Administrator" : auth.user.role === "INSTRUCTOR" ? "Instructor" : "Student"}
+                                        </small>
                                     </span>
                                 </div>
 
@@ -251,79 +251,59 @@ function AppShell() {
                             }
                         />
 
-                        <Route
-                            path="/courses/:slug/lessons/:lessonId/activities/:activityId"
-                            element={
-                                <ActivityPage />
-                            }
-                        />
-
-                        <Route
-                            path="/courses/:slug/quiz/:activityId"
-                            element={
-                                <QuizPage />
-                            }
-                        />
-
-                        <Route element={<ProtectedRoute />}>
-    <Route
-        path="/assessments"
-        element={
-            <AssessmentCenterPage />
-        }
-    />    <Route
-        path="/assessments/submissions/:submissionId"
-        element={
-            <AssessmentDetailPage />
-        }
-    />
-
-    <Route
-        path="/assessments/quiz-attempts/:attemptId"
-        element={
-            <AssessmentDetailPage />
-        }
-    />
-
-</Route>                          <Route
-                              path="/instructor"
-                              element={
-                                  <InstructorDashboardPage />
-                              }
-                          />
-
-
-                        <Route
-                            path="/instructor/assessments"
-                            element={
-                                <InstructorAssessmentPage />
-                            }
-                        />
-
-                        <Route
-                            path="/instructor/assessments/submissions/:submissionId"
-                            element={
-                                <AssessmentDetailPage />
-                            }
-                        />
-
-                        <Route
-                            element={
-                                <ProtectedRoute />
-                            }
-                        >
+                                                <Route element={<ProtectedRoute />}>
                             <Route
-                                path="/projects"
+                                path="/courses/:slug/lessons/:lessonId/activities/:activityId"
                                 element={
-                                    <ProjectsPage />
+                                    <ActivityPage />
                                 }
                             />
+                            <Route
+                                path="/courses/:slug/quiz/:activityId"
+                                element={
+                                    <QuizPage />
+                                }
+                            />
+                        </Route>
 
+                        <Route element={<ProtectedRoute />}>
+                            <Route
+                                path="/assessments"
+                                element={<AssessmentCenterPage />}
+                            />
+                            <Route
+                                path="/assessments/submissions/:submissionId"
+                                element={<AssessmentDetailPage />}
+                            />
+                            <Route
+                                path="/assessments/quiz-attempts/:attemptId"
+                                element={<AssessmentDetailPage />}
+                            />
+                        </Route>
+
+                        <Route element={<ProtectedRoute requiredRoles={["INSTRUCTOR", "ADMIN"]} />}>
+                            <Route
+                                path="/instructor"
+                                element={<InstructorDashboardPage />}
+                            />
+                            <Route
+                                path="/instructor/assessments"
+                                element={<InstructorAssessmentPage />}
+                            />
+                            <Route
+                                path="/instructor/assessments/submissions/:submissionId"
+                                element={<AssessmentDetailPage />}
+                            />
+                        </Route>
+
+                        <Route element={<ProtectedRoute />}>
+                            <Route
+                                path="/projects"
+                                element={<ProjectsPage />}
+                            />
                             <Route
                                 path="/projects/:courseSlug/:activityId"
-                                element={
-                                    <ProjectsPage />
-                                }
+                                element={<ProjectsPage />}
                             />
                         </Route>
 

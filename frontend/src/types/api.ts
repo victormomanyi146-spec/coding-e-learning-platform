@@ -13,7 +13,7 @@ export interface AuthUser {
     id: number;
     username: string;
     email: string;
-    role: string;
+    role: "STUDENT" | "INSTRUCTOR" | "ADMIN";
     is_staff?: boolean;
 }
 
