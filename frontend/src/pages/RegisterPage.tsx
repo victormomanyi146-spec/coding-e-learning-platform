@@ -69,6 +69,7 @@ export default function RegisterPage() {
                 </form>
                 <div className="auth-footer">
                     <p>Already registered? <Link to="/login">Sign in</Link></p>
+                    <p className="instructor-apply-prompt">Want to teach at Tech Haven? <Link to="/instructor/apply">Apply as an instructor</Link>.</p>
                     <Link to="/">← Back to Tech Haven</Link>
                 </div>
             </section>

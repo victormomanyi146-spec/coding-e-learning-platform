@@ -15,8 +15,10 @@ export async function apiRequest<T>(
 
     headers.set("Accept", "application/json");
 
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
     if (
         options.body &&
+        !isFormData &&
         !headers.has("Content-Type")
     ) {
         headers.set(
@@ -304,4 +306,25 @@ export function getCertificates(
         {},
         token,
     );
+}
+
+
+export async function apiBlobRequest(path: string, token: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+            Accept: "application/octet-stream",
+            Authorization: `Token ${token}`,
+        },
+    });
+    if (!response.ok) {
+        let message = `Download failed with status ${response.status}.`;
+        try {
+            const data = await response.json() as { detail?: string };
+            if (data.detail) message = data.detail;
+        } catch {
+            // Keep the generic download error.
+        }
+        throw new Error(message);
+    }
+    return response.blob();
 }
