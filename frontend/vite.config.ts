@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins: [react()],
+        base: env.VITE_BUILD_BASE || "/",
         server: {
             proxy: {
                 "/api": {

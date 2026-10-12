@@ -312,7 +312,7 @@ export default function AssessmentCenterPage() {
         );
 
     const filteredSubmissionHistory =
-        useMemo(() => {
+        (() => {
             const normalizedSearch =
                 submissionSearch.trim().toLowerCase();
 
@@ -389,12 +389,7 @@ export default function AssessmentCenterPage() {
                             first.submitted_at,
                         ).getTime(),
                 );
-        }, [
-            submissions,
-            submissionSearch,
-            submissionStatusFilter,
-            submissionCourseFilter,
-        ]);
+        })();
 
     const averageScore =
         gradedSubmissions.length > 0

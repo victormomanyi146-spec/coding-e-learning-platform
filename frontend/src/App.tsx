@@ -10,6 +10,12 @@ import { useAuth } from "./context/AuthContext";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import InstructorApplicationPage from "./pages/InstructorApplicationPage";
+import AdminInstructorReviewPage from "./pages/AdminInstructorReviewPage";
+import AdminAccountsPage from "./pages/AdminAccountsPage";
+import AdminLearningManagementPage from "./pages/AdminLearningManagementPage";
+import AdminOverviewPage from "./pages/AdminOverviewPage";
+import AdminAuditLogPage from "./pages/AdminAuditLogPage";
 import { useQuery } from "@tanstack/react-query";
 import {
     getCourses,
@@ -95,6 +101,30 @@ function AppShell() {
                                   {
                                       label: "Instructor",
                                       path: "/instructor",
+                                  },
+                              ]
+                            : []),
+                        ...(auth?.user.role === "ADMIN"
+                            ? [
+                                  {
+                                      label: "Instructor applications",
+                                      path: "/admin/instructor-applications",
+                                  },
+                                  {
+                                      label: "Admin overview",
+                                      path: "/admin/overview",
+                                  },
+                                  {
+                                      label: "Account management",
+                                      path: "/admin/accounts",
+                                  },
+                                  {
+                                      label: "Learning management",
+                                      path: "/admin/learning-management",
+                                  },
+                                  {
+                                      label: "Account audit log",
+                                      path: "/admin/audit-log",
                                   },
                               ]
                             : []),
@@ -227,6 +257,32 @@ function AppShell() {
                     path="/register"
                     element={<RegisterPage />}
                 />
+                    <Route
+                        path="/instructor/apply"
+                        element={<InstructorApplicationPage />}
+                    />
+                    <Route element={<ProtectedRoute requiredRoles={["ADMIN"]} />}>
+                        <Route
+                            path="/admin/instructor-applications"
+                            element={<AdminInstructorReviewPage />}
+                        />
+                            <Route
+                                path="/admin/overview"
+                                element={<AdminOverviewPage />}
+                            />
+                            <Route
+                                path="/admin/audit-log"
+                                element={<AdminAuditLogPage />}
+                            />
+                            <Route
+                                path="/admin/learning-management"
+                                element={<AdminLearningManagementPage />}
+                            />
+                            <Route
+                                path="/admin/accounts"
+                                element={<AdminAccountsPage />}
+                            />
+                    </Route>
 
                         <Route element={<ProtectedRoute />}>
                             <Route
