@@ -29,9 +29,11 @@ export default function LoginPage() {
 
     if (isAuthenticated) {
         const home =
-            auth?.user.role === "INSTRUCTOR"
-                ? "/instructor/assessments"
-                : "/dashboard";
+            auth?.user.role === "ADMIN"
+                ? "/admin/overview"
+                : auth?.user.role === "INSTRUCTOR"
+                    ? "/instructor/assessments"
+                    : "/dashboard";
 
         return <Navigate to={home} replace />;
     }
@@ -108,7 +110,7 @@ export default function LoginPage() {
                             : "/instructor/assessments"
                     )
                     : authenticatedMode === "admin"
-                        ? "/dashboard"
+                        ? "/admin/overview"
                         : (
                             from && !from.startsWith("/instructor")
                                 ? from
