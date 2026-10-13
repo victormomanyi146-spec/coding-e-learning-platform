@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib.auth import login
 import logging
 import re
@@ -9,7 +11,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.db import transaction
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseRedirect
 from django.utils import timezone
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.authentication import TokenAuthentication
@@ -30,6 +32,19 @@ from .serializers import (
     StudentLoginSerializer,
     StudentRegistrationSerializer,
 )
+
+
+def react_login_redirect(request):
+    """Send legacy Django login URLs to React, preserving a local return path.
+
+    The React login page validates `next` as an internal path before navigating,
+    so this redirect never sends the browser directly to an untrusted host.
+    """
+    next_url = request.GET.get("next") or request.POST.get("next")
+    target = "/login/"
+    if next_url:
+        target = f"{target}?{urlencode({'next': next_url})}"
+    return HttpResponseRedirect(target)
 
 
 def register(request):

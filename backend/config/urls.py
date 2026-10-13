@@ -24,7 +24,28 @@ def healthz(request):
     return HttpResponse("ok", content_type="text/plain")
 
 
-urlpatterns = [
+# Explicit React admin routes must precede Django's broad `admin/` include.
+# They are enabled only for the Docker/unified React deployment; the existing
+# native Python Render service keeps its current Django-admin routing.
+urlpatterns = []
+if settings.UNIFIED_REACT_FRONTEND:
+    urlpatterns += [
+        re_path(r"^admin/overview/?$", react_app, name="react-admin-overview"),
+        re_path(r"^admin/accounts/?$", react_app, name="react-admin-accounts"),
+        re_path(r"^admin/audit-log/?$", react_app, name="react-admin-audit-log"),
+        re_path(
+            r"^admin/instructor-applications/?$",
+            react_app,
+            name="react-admin-instructor-applications",
+        ),
+        re_path(
+            r"^admin/learning-management/?$",
+            react_app,
+            name="react-admin-learning-management",
+        ),
+    ]
+
+urlpatterns += [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
     path("api/accounts/", include("accounts.api_urls")),

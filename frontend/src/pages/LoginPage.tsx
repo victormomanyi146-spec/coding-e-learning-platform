@@ -12,6 +12,23 @@ import { useAuth } from "../context/AuthContext";
 
 type AuthView = "signin" | "signup";
 
+function safeInternalDestination(
+    candidate: string | null | undefined,
+): string | null {
+    if (
+        !candidate ||
+        !candidate.startsWith("/") ||
+        candidate.startsWith("//") ||
+        candidate.startsWith("/\\") ||
+        candidate.includes("\\") ||
+        /[\r\n]/.test(candidate)
+    ) {
+        return null;
+    }
+
+    return candidate;
+}
+
 const loginModes: LoginMode[] = ["student", "instructor", "admin"];
 
 export default function LoginPage() {
@@ -27,13 +44,22 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const stateDestination = safeInternalDestination(
+        (location.state as { from?: string } | null | undefined)?.from,
+    );
+    const requestedNext = safeInternalDestination(
+        new URLSearchParams(location.search).get("next"),
+    );
+
     if (isAuthenticated) {
         const home =
-            auth?.user.role === "ADMIN"
+            stateDestination ??
+            requestedNext ??
+            (auth?.user.role === "ADMIN"
                 ? "/admin/overview"
                 : auth?.user.role === "INSTRUCTOR"
                     ? "/instructor/assessments"
-                    : "/dashboard";
+                    : "/dashboard");
 
         return <Navigate to={home} replace />;
     }
@@ -95,26 +121,24 @@ export default function LoginPage() {
                     );
             }
 
-            const from = (
-                location.state as
-                    | { from?: string }
-                    | null
-                    | undefined
-            )?.from;
+            const from = stateDestination;
+            const next = requestedNext;
 
             const destination =
                 authenticatedMode === "instructor"
                     ? (
                         from?.startsWith("/instructor")
                             ? from
-                            : "/instructor/assessments"
+                            : next ?? "/instructor/assessments"
                     )
                     : authenticatedMode === "admin"
-                        ? "/admin/overview"
+                        ? from ?? next ?? "/admin/overview"
                         : (
                             from && !from.startsWith("/instructor")
                                 ? from
-                                : "/dashboard"
+                                : next && !next.startsWith("/instructor")
+                                    ? next
+                                    : "/dashboard"
                         );
 
             navigate(destination, { replace: true });
