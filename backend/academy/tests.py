@@ -1,3 +1,5 @@
+import json
+from django.conf import settings
 from datetime import datetime, timedelta
 
 from academy.models import (
@@ -98,6 +100,25 @@ class AcademyFlowTests(TestCase):
             response.status_code,
             200,
         )
+
+        if settings.UNIFIED_REACT_FRONTEND:
+            api_response = self.client.get(
+                reverse("api-course-detail", args=[self.course.slug])
+            )
+            self.assertEqual(
+                api_response.status_code,
+                200,
+                api_response.content.decode("utf-8"),
+            )
+            payload = json.loads(api_response.content.decode("utf-8"))
+            self.assertTrue(
+                any(
+                    module.get("title") == "Fundamentals"
+                    for module in payload.get("modules", [])
+                ),
+                msg=f"Unexpected course API payload: {payload}",
+            )
+            return
 
         self.assertContains(
             response,
@@ -212,6 +233,33 @@ class AcademyFlowTests(TestCase):
             response.status_code,
             200,
         )
+
+        if settings.UNIFIED_REACT_FRONTEND:
+            self.assertContains(response, 'id="root"')
+            self.assertContains(response, "/static/react/assets/")
+
+            api_response = self.client.get(
+                reverse("api-course-detail", args=[self.course.slug])
+            )
+            self.assertEqual(
+                api_response.status_code,
+                200,
+                api_response.content.decode("utf-8"),
+            )
+            payload = json.loads(api_response.content.decode("utf-8"))
+
+            activity_ids = [
+                activity.get("id")
+                for module in payload.get("modules", [])
+                for lesson in module.get("lessons", [])
+                for activity in lesson.get("activities", [])
+            ]
+            self.assertIn(
+                self.activity.id,
+                activity_ids,
+                msg=f"Activity missing from course API payload: {payload}",
+            )
+            return
 
         self.assertContains(
             response,
@@ -612,6 +660,31 @@ class AcademyFlowTests(TestCase):
             response.status_code,
             200,
         )
+
+        if settings.UNIFIED_REACT_FRONTEND:
+            self.assertContains(response, 'id="root"')
+
+            from rest_framework.authtoken.models import Token
+
+            token, _ = Token.objects.get_or_create(user=self.student)
+            feedback_response = self.client.get(
+                reverse("api-submission-detail", args=[submission.id]),
+                HTTP_AUTHORIZATION=f"Token {token.key}",
+            )
+            self.assertEqual(
+                feedback_response.status_code,
+                200,
+                feedback_response.content.decode("utf-8"),
+            )
+            feedback_payload = json.loads(
+                feedback_response.content.decode("utf-8")
+            )
+            self.assertEqual(feedback_payload["status"], "correction")
+            self.assertEqual(
+                feedback_payload["feedback"],
+                "Please correct the age conversion.",
+            )
+            return
 
         self.assertContains(
             response,
@@ -4056,6 +4129,20 @@ class UiNavigationIntegrationTests(TestCase):
             200,
         )
 
+        if settings.UNIFIED_REACT_FRONTEND:
+            self.assertContains(response, 'id="root"')
+            self.assertContains(response, "/static/react/assets/")
+
+            api_response = self.client.get(reverse("api-course-list"))
+            self.assertEqual(
+                api_response.status_code,
+                200,
+                api_response.content.decode("utf-8"),
+            )
+            api_payload = json.loads(api_response.content.decode("utf-8"))
+            self.assertIn("results", api_payload)
+            return
+
         self.assertContains(
             response,
             "Tech Haven",
@@ -4097,6 +4184,20 @@ class UiNavigationIntegrationTests(TestCase):
             response.status_code,
             200,
         )
+
+        if settings.UNIFIED_REACT_FRONTEND:
+            self.assertContains(response, 'id="root"')
+            self.assertContains(response, "/static/react/assets/")
+
+            dashboard_response = self.client.get(
+                reverse("instructor_dashboard")
+            )
+            self.assertEqual(
+                dashboard_response.status_code,
+                200,
+                dashboard_response.content.decode("utf-8"),
+            )
+            return
 
         self.assertContains(
             response,

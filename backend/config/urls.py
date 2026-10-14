@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import render
 
 from academy.models import Course
@@ -17,6 +17,31 @@ def home(request):
 def react_app(request):
     """Serve the bundled React single-page application."""
     return render(request, "react_app/index.html")
+
+
+def react_course_activity(request, course_slug, lesson_id, activity_id):
+    """Serve React for authorized activity pages and preserve Django submissions."""
+    from academy.views import activity_detail
+
+    if request.method not in {"GET", "HEAD", "POST"}:
+        return HttpResponseNotAllowed(["GET", "HEAD", "POST"])
+
+    # Reuse the actual Django view so enrollment and activity-lock checks
+    # also apply when a learner navigates directly to an activity URL.
+    response = activity_detail(
+        request,
+        course_slug,
+        lesson_id,
+        activity_id,
+    )
+
+    # Keep the unified React experience for authorized page navigation.
+    # Return redirects and authorization failures from the Django view unchanged.
+    if request.method in {"GET", "HEAD"} and response.status_code == 200:
+        return react_app(request)
+
+    # POST requests must reach Django's submission and validation logic.
+    return response
 
 
 def healthz(request):
@@ -57,8 +82,8 @@ if settings.UNIFIED_REACT_FRONTEND:
     urlpatterns += [
         re_path(r"^courses/?$", react_app, name="react-courses"),
         re_path(
-            r"^courses/[^/]+/lessons/[^/]+/activities/[^/]+/?$",
-            react_app,
+            r"^courses/(?P<course_slug>[^/]+)/lessons/(?P<lesson_id>\d+)/activities/(?P<activity_id>\d+)/?$",
+            react_course_activity,
             name="react-course-activity",
         ),
         re_path(
@@ -67,7 +92,7 @@ if settings.UNIFIED_REACT_FRONTEND:
             name="react-course-quiz",
         ),
         re_path(
-            r"^courses/(?!(?:assessments|notifications|instructor)(?:/|$))[^/]+/?$",
+            r"^courses/(?!(?:my-courses|assessments|notifications|instructor)(?:/|$))[^/]+/?$",
             react_app,
             name="react-course-detail",
         ),
