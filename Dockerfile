@@ -1,7 +1,7 @@
 FROM node:24-bookworm-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --fetch-retries=10 --fetch-timeout=120000
 COPY frontend/ ./
 ARG VITE_BUILD_BASE=/static/react/
 ENV VITE_BUILD_BASE=${VITE_BUILD_BASE}
@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /app
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install -r /app/backend/requirements.txt
+RUN pip install --timeout 120 --retries 10 -r /app/backend/requirements.txt
 COPY backend/ /app/backend/
 RUN mkdir -p /app/backend/templates/react_app /app/backend/static/react/assets
 COPY --from=frontend-build /app/frontend/dist/index.html /tmp/react-index.html
@@ -24,7 +24,7 @@ RUN python /app/prepare_react_template.py \
     /tmp/react-index.html \
     /app/backend/templates/react_app/index.html
 COPY deployment/start-unified.sh /app/start-unified.sh
-RUN chmod +x /app/start-unified.sh
+RUN sed -i 's/\r$//' /app/start-unified.sh && chmod +x /app/start-unified.sh
 WORKDIR /app/backend
 
 ENV UNIFIED_REACT_FRONTEND=True
