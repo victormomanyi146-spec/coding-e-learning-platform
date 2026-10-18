@@ -1,9 +1,11 @@
 import re
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
@@ -138,3 +140,134 @@ class InstructorOnboardingAPITests(APITestCase):
         self.assertEqual(application.status, InstructorApplication.Status.REJECTED)
         self.assertFalse(application.user.is_active)
         self.assertFalse(application.user.is_staff)
+
+    def test_expired_otp_is_rejected_without_verifying_email(self):
+        application = self.submit()
+        otp = self.otp_for_latest_email()
+
+        application.otp_expires_at = timezone.now() - timedelta(seconds=1)
+        application.save(update_fields=["otp_expires_at"])
+
+        response = self.client.post(
+            self.verify_url,
+            {"application_id": application.id, "otp": otp},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("expired", response.data["detail"].lower())
+        application.refresh_from_db()
+        self.assertEqual(
+            application.status,
+            InstructorApplication.Status.PENDING_EMAIL,
+        )
+        self.assertIsNone(application.email_verified_at)
+
+    def test_incorrect_otp_attempt_limit_is_enforced(self):
+        application = self.submit()
+        valid_otp = self.otp_for_latest_email()
+        wrong_otp = "000000" if valid_otp != "000000" else "000001"
+
+        for attempt in range(5):
+            response = self.client.post(
+                self.verify_url,
+                {"application_id": application.id, "otp": wrong_otp},
+                format="json",
+            )
+            self.assertEqual(response.status_code, 400, response.data)
+            application.refresh_from_db()
+            self.assertEqual(application.otp_attempts, attempt + 1)
+
+        blocked = self.client.post(
+            self.verify_url,
+            {"application_id": application.id, "otp": wrong_otp},
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, 429, blocked.data)
+        application.refresh_from_db()
+        self.assertEqual(application.otp_attempts, 5)
+        self.assertEqual(
+            application.status,
+            InstructorApplication.Status.PENDING_EMAIL,
+        )
+
+    def test_resend_obeys_cooldown_and_resend_limit(self):
+        application = self.submit()
+        resend_url = "/api/accounts/instructor-applications/resend-otp/"
+        payload = {"application_id": application.id}
+
+        too_soon = self.client.post(resend_url, payload, format="json")
+        self.assertEqual(too_soon.status_code, 429, too_soon.data)
+        self.assertEqual(len(mail.outbox), 1)
+
+        application.otp_last_sent_at = timezone.now() - timedelta(seconds=61)
+        application.otp_resend_count = 3
+        application.save(
+            update_fields=["otp_last_sent_at", "otp_resend_count"]
+        )
+
+        limit_reached = self.client.post(resend_url, payload, format="json")
+        self.assertEqual(limit_reached.status_code, 429, limit_reached.data)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_resend_after_cooldown_rotates_otp_and_verifies(self):
+        application = self.submit()
+        previous_hash = application.otp_hash
+        application.otp_last_sent_at = timezone.now() - timedelta(seconds=61)
+        application.save(update_fields=["otp_last_sent_at"])
+
+        response = self.client.post(
+            "/api/accounts/instructor-applications/resend-otp/",
+            {"application_id": application.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(len(mail.outbox), 2)
+
+        application.refresh_from_db()
+        self.assertNotEqual(application.otp_hash, previous_hash)
+        self.assertEqual(application.otp_resend_count, 1)
+        self.assertGreater(application.otp_expires_at, timezone.now())
+
+        verified = self.verify(application)
+        self.assertEqual(verified.status_code, 200, verified.data)
+        application.refresh_from_db()
+        self.assertEqual(
+            application.status,
+            InstructorApplication.Status.PENDING_REVIEW,
+        )
+
+    def test_application_document_download_requires_superuser(self):
+        application = self.submit()
+        document_url = (
+            f"/api/accounts/admin/instructor-applications/"
+            f"{application.id}/documents/cv/"
+        )
+
+        instructor = User.objects.create_user(
+            username="document_test_instructor",
+            email="document_test_instructor@example.com",
+            password="InstructorStrong@2026!",
+            role=User.Roles.INSTRUCTOR,
+            is_staff=True,
+        )
+        instructor_token = Token.objects.create(user=instructor)
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {instructor_token.key}"
+        )
+
+        denied = self.client.get(document_url)
+        self.assertEqual(denied.status_code, 403, getattr(denied, "data", None))
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.admin_token.key}"
+        )
+        allowed = self.client.get(document_url)
+
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed["Cache-Control"], "private, no-store")
+        self.assertEqual(
+            b"".join(allowed.streaming_content),
+            b"%PDF-1.4 test document",
+        )
