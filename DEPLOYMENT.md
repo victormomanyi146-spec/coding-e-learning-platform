@@ -31,14 +31,34 @@ The application currently contains a Python code runner. The runner executes sub
 
 SQLite remains available for local development. Production should use PostgreSQL.
 
-## File uploads
+## Instructor application documents
 
-Assignment and lab attachments are currently stored through Django's filesystem storage.
-For local development this works with `MEDIA_ROOT`.
+Instructor CVs and qualification records use a separate private storage backend.
+Local development defaults to filesystem storage outside `MEDIA_ROOT`. Deployments
+with `DJANGO_DEBUG=False` default to S3-compatible storage and fail closed if required
+bucket or region settings are missing.
 
-For production, use durable object storage (such as an S3-compatible service) before
-relying on uploaded attachments as permanent records. A normal Render web-service
-filesystem should not be treated as permanent application storage.
+Configure these variables on the deployment service:
 
-The application serves submission attachments through an authenticated route so
-only the submitting student or an instructor/admin can access them.
+- `INSTRUCTOR_DOCUMENT_STORAGE=s3`
+- `INSTRUCTOR_DOCUMENTS_S3_BUCKET`: private bucket name
+- `INSTRUCTOR_DOCUMENTS_S3_REGION`: provider-supported bucket region
+
+Optional variables:
+
+- `INSTRUCTOR_DOCUMENTS_S3_ENDPOINT_URL`: endpoint for an S3-compatible provider
+- `INSTRUCTOR_DOCUMENTS_S3_PREFIX`: optional object-key prefix
+- `INSTRUCTOR_DOCUMENTS_S3_ACCESS_KEY` and `INSTRUCTOR_DOCUMENTS_S3_SECRET_KEY`:
+  access credentials when required
+- `INSTRUCTOR_DOCUMENTS_S3_SESSION_TOKEN`: optional temporary-credential token
+- `INSTRUCTOR_DOCUMENTS_S3_QUERYSTRING_EXPIRE`: signed URL lifetime in seconds (default 300)
+
+Keep the bucket private and enable the provider's public-access blocking controls.
+Never commit credentials or share their values. Documents should be retrieved only
+through the administrator-authorized download endpoint, not public media URLs.
+
+## Other file uploads
+
+Assignment and lab attachments still use the general filesystem storage. Configure
+and verify durable storage for those uploads separately before treating them as
+permanent records. The existing authenticated attachment route remains in place.
