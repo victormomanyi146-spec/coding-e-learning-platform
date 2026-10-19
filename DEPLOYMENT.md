@@ -62,3 +62,20 @@ through the administrator-authorized download endpoint, not public media URLs.
 Assignment and lab attachments still use the general filesystem storage. Configure
 and verify durable storage for those uploads separately before treating them as
 permanent records. The existing authenticated attachment route remains in place.
+
+## Email delivery on Render Free
+
+Render Free web services cannot send outbound SMTP traffic on ports 25, 465, or 587.
+Instructor-application verification mail therefore uses the Resend HTTPS API through
+`accounts.email_backends.ResendAPIEmailBackend` instead of SMTP.
+
+Configure the **staging service only** for the first test:
+
+- `DJANGO_EMAIL_BACKEND=accounts.email_backends.ResendAPIEmailBackend`
+- `RESEND_API_KEY`: a Resend API key with Sending access; store it as a secret in Render
+- `DEFAULT_FROM_EMAIL=Tech Haven <onboarding@resend.dev>` for Resend's test sender
+
+Resend's test sender can deliver only to the email address associated with the Resend
+account. Use that exact account-owner email for the first OTP test. Delivering to other
+applicants requires a verified sender domain and a `DEFAULT_FROM_EMAIL` address under
+that verified domain. Never commit the API key or place it in logs.
