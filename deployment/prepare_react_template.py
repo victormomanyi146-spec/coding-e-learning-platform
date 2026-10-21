@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import sys
 
-source = Path(sys.argv[1]).read_text(encoding="utf-8")
+source = Path(sys.argv[1]).read_text(encoding="utf-8-sig")
 target = Path(sys.argv[2])
 
 pattern = re.compile(r'((?:src|href)=")/static/react/assets/([^\"]+)(")')

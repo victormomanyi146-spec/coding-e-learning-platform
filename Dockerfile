@@ -19,6 +19,7 @@ COPY backend/ /app/backend/
 RUN mkdir -p /app/backend/templates/react_app /app/backend/static/react/assets
 COPY --from=frontend-build /app/frontend/dist/index.html /tmp/react-index.html
 COPY --from=frontend-build /app/frontend/dist/assets/ /app/backend/static/react/assets/
+COPY --from=frontend-build /app/frontend/dist/favicon.svg /app/backend/static/react/favicon.svg
 COPY deployment/prepare_react_template.py /app/prepare_react_template.py
 RUN python /app/prepare_react_template.py \
     /tmp/react-index.html \
