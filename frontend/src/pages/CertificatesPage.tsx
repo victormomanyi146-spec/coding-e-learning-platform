@@ -348,7 +348,7 @@ export default function CertificatesPage() {
                     <strong>
                         {averageCertifiedScore ===
                         null
-                            ? "?"
+                            ? "—"
                             : `${averageCertifiedScore.toFixed(
                                   1,
                               )}%`}
@@ -374,8 +374,8 @@ export default function CertificatesPage() {
                     {certificates.length ===
                         0 && (
                         <div className="certificate-empty">
-                            <span className="certificate-empty-icon">
-                                ?
+                            <span className="certificate-empty-icon" aria-hidden="true">
+                                🎓
                             </span>
 
                             <h3>
@@ -456,7 +456,7 @@ export default function CertificatesPage() {
                                             <strong>
                                                 {certificate.average_score ===
                                                 null
-                                                    ? "?"
+                                                    ? "—"
                                                     : `${certificate.average_score}%`}
                                             </strong>
                                         </div>

@@ -1044,6 +1044,12 @@ class SubmissionListCreateAPIView(APIView):
                 status="submitted",
             )
 
+        # Keep React submissions consistent with the existing completion workflow.
+        ActivityCompletion.objects.get_or_create(
+            student=request.user,
+            activity=activity,
+        )
+
         serializer = SubmissionAPISerializer(
             submission,
             context={

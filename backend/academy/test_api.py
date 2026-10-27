@@ -350,6 +350,14 @@ class AcademyAPITests(TestCase):
             self.student,
         )
 
+        self.assertTrue(
+            ActivityCompletion.objects.filter(
+                student=self.student,
+                activity=self.coding_activity,
+            ).exists(),
+            "A coding submission through the API should record activity completion.",
+        )
+
         self.authenticate_instructor()
 
         review_response = self.client.post(
