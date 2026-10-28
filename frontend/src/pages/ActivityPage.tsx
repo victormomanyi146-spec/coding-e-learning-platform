@@ -131,6 +131,15 @@ export default function ActivityPage() {
                         },
                     );
 
+                    await queryClient.invalidateQueries(
+                        {
+                            queryKey: [
+                                "certificate-center",
+                                token,
+                            ],
+                        },
+                    );
+
                     setCode("");
                     setResponseText("");
                     setGithubUrl("");
@@ -151,6 +160,15 @@ export default function ActivityPage() {
                             queryKey: [
                                 "course-progress",
                                 slug,
+                            ],
+                        },
+                    );
+
+                    await queryClient.invalidateQueries(
+                        {
+                            queryKey: [
+                                "certificate-center",
+                                token,
                             ],
                         },
                     );
