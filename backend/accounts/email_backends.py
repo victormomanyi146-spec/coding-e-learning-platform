@@ -1,4 +1,4 @@
-﻿"""Django email backend using the Resend REST API over HTTPS.
+"""Django email backend using the Resend REST API over HTTPS.
 
 This avoids SMTP ports, which are blocked for Render Free web services.
 """

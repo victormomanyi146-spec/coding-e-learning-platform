@@ -1,4 +1,4 @@
-﻿import json
+import json
 from io import BytesIO
 from urllib.error import HTTPError, URLError
 from unittest.mock import patch
