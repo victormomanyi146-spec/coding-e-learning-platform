@@ -9,18 +9,12 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /healthz/
+    # Intended for the existing production service only.
+    # Existing secrets and service-specific environment variables are intentionally omitted.
     envVars:
-      - key: DJANGO_SECRET_KEY
-        generateValue: true
       - key: DJANGO_DEBUG
         value: "False"
       - key: DJANGO_TIME_ZONE
         value: "Africa/Nairobi"
       - key: UNIFIED_REACT_FRONTEND
         value: "True"
-      - key: DJANGO_ALLOWED_HOSTS
-        sync: false
-      - key: DJANGO_CSRF_TRUSTED_ORIGINS
-        sync: false
-      - key: DATABASE_URL
-        sync: false
