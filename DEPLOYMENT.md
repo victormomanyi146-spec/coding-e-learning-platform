@@ -1,44 +1,87 @@
 # Render Deployment Notes
 
-This project is configured for deployment with Render.
+This repository supports a unified Docker deployment that builds the React
+frontend with Vite and serves the generated assets through Django. The root
+`Dockerfile` builds the frontend, prepares the React entry template, and starts
+Django with `UNIFIED_REACT_FRONTEND=True`.
 
-## Project root
+## Production deployment architecture
 
-The Django application lives in `backend/`, where `manage.py` is located.
+The existing production service should use the repository root as its Docker
+build context:
 
-## Render settings
+- Repository: `victormomanyi146-spec/coding-e-learning-platform`
+- Branch: `main`
+- Runtime: Docker
+- Dockerfile path: `./Dockerfile`
+- Docker build context: `.`
+- Region: Oregon
+- Compute plan: preserve the existing service plan
+- Health check path: `/healthz/`
+- Auto-deploy behavior: deploy on commits to the linked branch
 
-Root Directory:
-`backend`
+Do not set `UNIFIED_REACT_FRONTEND=True` on the existing native Python service
+while it remains rooted at `backend/`. That configuration does not build or copy
+the React template and Vite assets, and enabling the flag alone can break page
+rendering.
 
-Build Command:
-`bash build.sh`
+## Production migration preflight
 
-Start Command:
-`gunicorn config.wsgi:application`
+Before changing the current production service from Python to Docker:
 
-## Required environment variables
+1. Confirm that `DATABASE_URL` points to the existing production PostgreSQL
+   database. Never paste the connection string into chat or commit it to Git.
+   If the database target is uncertain, stop and investigate first.
+2. Preserve the existing production `DJANGO_SECRET_KEY` exactly.
+3. Preserve all existing environment variables, including database, mail-provider,
+   file-storage and application-specific settings. Do not copy staging values
+   into production.
+4. Keep `DJANGO_DEBUG=False` and verify that `DJANGO_CSRF_TRUSTED_ORIGINS`
+   includes the production HTTPS origin.
+5. Confirm that the runtime change targets the existing production service and
+   keeps the existing service URL.
 
-- DJANGO_SECRET_KEY: generate a secure value in Render
-- DJANGO_DEBUG: False
-- DJANGO_TIME_ZONE: Africa/Nairobi
-- DJANGO_CSRF_TRUSTED_ORIGINS: your Render URL, for example https://your-service.onrender.com
-- DATABASE_URL: PostgreSQL connection string
+## Blueprint management
 
-## Important
+A local edit to `render.yaml` does not by itself change the live service.
 
-The application currently contains a Python code runner. The runner executes submitted Python code with the server's Python interpreter. Do not expose that runner publicly until it is moved into an isolated sandbox/container with strict CPU, memory, filesystem, process, and network restrictions.
+Before applying a Blueprint, confirm whether the existing production service is
+already managed by a Blueprint. Do not create a second production service by
+accident. If no existing Blueprint manages it, review the existing-service
+runtime-change procedure in the Render Dashboard before choosing an approach.
 
-SQLite remains available for local development. Production should use PostgreSQL.
+## Post-deploy verification
+
+Verify the following after an approved deployment:
+
+- `/healthz/` returns a successful HTTP response.
+- `/` serves the React application shell.
+- JavaScript and CSS assets return HTTP 200.
+- `/login`, `/courses`, `/assessments`, `/projects`, `/certificates`, and
+  `/notifications` serve the React application shell.
+- Student, instructor and admin authentication and permissions work against the
+  existing production database.
+- Course progress, submission grading, certificates and notifications work.
+- Existing email delivery and uploaded-file access remain configured.
+
+Route-shell responses alone do not establish interactive end-to-end correctness.
+Test the workflows in staging before changing production.
+
+## Important security note
+
+The application contains a Python code runner that executes submitted code using
+the server's Python interpreter. Do not expose that runner publicly until it is
+moved into an isolated sandbox with strict CPU, memory, filesystem, process and
+network restrictions.
+
+Production should use PostgreSQL. SQLite is available for local development.
 
 ## File uploads
 
-Assignment and lab attachments are currently stored through Django's filesystem storage.
-For local development this works with `MEDIA_ROOT`.
+Assignment and lab attachments currently use Django's filesystem storage through
+`MEDIA_ROOT`. A normal Render web-service filesystem should not be treated as
+permanent storage. Configure durable object storage, such as an S3-compatible
+service, before relying on uploaded attachments as permanent records.
 
-For production, use durable object storage (such as an S3-compatible service) before
-relying on uploaded attachments as permanent records. A normal Render web-service
-filesystem should not be treated as permanent application storage.
-
-The application serves submission attachments through an authenticated route so
-only the submitting student or an instructor/admin can access them.
+Submission attachments are served through an authenticated route that limits
+access to the submitting student and authorized instructors or administrators.

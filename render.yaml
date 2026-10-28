@@ -1,10 +1,14 @@
 services:
   - type: web
     name: coding-e-learning-platform
-    runtime: python
-    rootDir: backend
-    buildCommand: bash build.sh
-    startCommand: gunicorn config.wsgi:application
+    repo: https://github.com/victormomanyi146-spec/coding-e-learning-platform
+    branch: main
+    region: oregon
+    autoDeployTrigger: commit
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz/
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true
@@ -12,9 +16,11 @@ services:
         value: "False"
       - key: DJANGO_TIME_ZONE
         value: "Africa/Nairobi"
+      - key: UNIFIED_REACT_FRONTEND
+        value: "True"
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
         sync: false
-      - key: PYTHON_VERSION
-        value: "3.12.11"
+      - key: DATABASE_URL
+        sync: false
