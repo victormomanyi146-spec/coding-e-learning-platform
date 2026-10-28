@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 from .models import (
     Activity,
     ActivityCompletion,
+    Certificate,
     Course,
     Enrollment,
     Lesson,
@@ -350,12 +351,37 @@ class AcademyAPITests(TestCase):
             self.student,
         )
 
-        self.assertTrue(
+        self.assertFalse(
             ActivityCompletion.objects.filter(
                 student=self.student,
                 activity=self.coding_activity,
             ).exists(),
-            "A coding submission through the API should record activity completion.",
+            "A pending coding submission must not mark the activity complete.",
+        )
+
+        pending_certificates_response = self.client.get(
+            "/api/certificates/",
+        )
+        self.assertEqual(
+            pending_certificates_response.status_code,
+            200,
+        )
+        self.assertEqual(
+            pending_certificates_response.data["count"],
+            0,
+        )
+        self.assertFalse(
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).exists(),
+        )
+        self.assertFalse(
+            Notification.objects.filter(
+                recipient=self.student,
+                notification_type="general",
+                title="Course Completed",
+            ).exists(),
         )
 
         self.authenticate_instructor()
@@ -399,6 +425,17 @@ class AcademyAPITests(TestCase):
             ).exists()
         )
 
+        course_completion_notifications = Notification.objects.filter(
+            recipient=self.student,
+            notification_type="general",
+            title="Course Completed",
+        )
+        self.assertEqual(
+            course_completion_notifications.count(),
+            1,
+            "Grading the final required activity must notify course completion.",
+        )
+
         notification = Notification.objects.filter(
             recipient=self.student,
             notification_type="graded",
@@ -414,6 +451,25 @@ class AcademyAPITests(TestCase):
         )
 
         self.authenticate_student()
+
+        certificates_response = self.client.get(
+            "/api/certificates/",
+        )
+        self.assertEqual(
+            certificates_response.status_code,
+            200,
+        )
+        self.assertEqual(
+            certificates_response.data["count"],
+            1,
+            "A certificate should become available after the final required activity is graded.",
+        )
+        self.assertTrue(
+            Certificate.objects.filter(
+                student=self.student,
+                course=self.course,
+            ).exists(),
+        )
 
         notifications_response = self.client.get(
             "/api/notifications/"
