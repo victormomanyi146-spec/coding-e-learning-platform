@@ -181,6 +181,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() in {"1", "true", "yes", "on"}
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in {"1", "true", "yes", "on"}
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Tech Haven <no-reply@example.com>")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
@@ -236,4 +237,3 @@ if "test" in _sys.argv and "STORAGES" in globals():
     STORAGES["default"] = {
         "BACKEND": "django.core.files.storage.InMemoryStorage",
     }
-
